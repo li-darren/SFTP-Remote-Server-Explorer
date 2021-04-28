@@ -3,12 +3,27 @@
  */
 package FileTransfer;
 
-public class App {
-    public String getGreeting() {
-        return "Hello world.";
+import javafx.application.Application;
+import javafx.scene.Group;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+public class App extends Application {
+
+    public final static boolean DEBUGGING = true;
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        if (DEBUGGING){
+            System.out.println("Hello World!");
+        }
+
+        Group root = new Group();
+        primaryStage.setScene(new Scene(root));
+        primaryStage.show();
     }
 
-    public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
-    }
+    
+
+
 }

@@ -38,7 +38,3 @@ javafx {
     version = "15.0.1"
     modules = [ 'javafx.controls' ]
 }
-
-test {
-    useJUnitPlatform()
-}
