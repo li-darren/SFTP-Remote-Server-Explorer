@@ -3,10 +3,15 @@
  */
 package FileTransfer;
 
+import com.jcraft.jsch.JSchException;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+
+import java.io.File;
+import java.io.FileReader;
+import java.util.Properties;
 
 public class App extends Application {
 
@@ -14,16 +19,66 @@ public class App extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        if (DEBUGGING){
-            System.out.println("Hello World!");
-        }
-
         Group root = new Group();
         primaryStage.setScene(new Scene(root));
-        primaryStage.show();
+//        primaryStage.show();
+
+        testSendFile();
     }
 
-    
+    public void testSendFile(){
+
+        String knownHosts = System.getenv("USERPROFILE").concat("\\.ssh\\known_hosts");
+        String saveFile = System.getenv("APPDATA").concat("\\FileTransfer");
+
+        if (App.DEBUGGING){
+            System.out.printf("Known Host: %s%n", knownHosts);
+            System.out.printf("Save File: %s%n", saveFile);
+
+            File knownHostsFile = new File(knownHosts);
+            File saveFileFile = new File(saveFile);
+
+            if (knownHostsFile.exists()){
+                System.out.println("Known Hosts Exists");
+            }
+            if (saveFileFile.exists()){
+                System.out.println("Save File Exists");
+            }
+        }
+
+        String hostToConnect = "linux.student.cs.uwaterloo.ca";
+
+        Properties loginProperties = new Properties();
+
+        try (FileReader in = new FileReader("login.properties")) {
+            loginProperties.load(in);
+        }
+        catch(Exception e){
+            if (App.DEBUGGING){
+                System.out.println("Failed to load login properties...");
+            }
+            return;
+        }
+
+        String username = loginProperties.getProperty("username");
+        String password = loginProperties.getProperty("password");
+
+        FileSender fileSender = new FileSender();
+        try{
+            fileSender.configureJsch(knownHosts, hostToConnect, username, password);
+            fileSender.sendFile("test.txt");
+        }
+        catch (JSchException e){
+            if (App.DEBUGGING){
+                e.printStackTrace();
+                System.out.println("JSchException has been thrown...");
+            }
+            //todo: failed to configure....
+        }
+
+    }
+
+
 
 
 }

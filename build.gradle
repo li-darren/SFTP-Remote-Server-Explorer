@@ -27,6 +27,9 @@ dependencies {
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.13'
+
+    // https://mvnrepository.com/artifact/com.jcraft/jsch
+    implementation group: 'com.jcraft', name: 'jsch', version: '0.1.54'
 }
 
 application {
