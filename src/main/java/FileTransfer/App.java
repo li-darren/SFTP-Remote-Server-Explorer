@@ -5,29 +5,181 @@ package FileTransfer;
 
 import com.jcraft.jsch.JSchException;
 import javafx.application.Application;
-import javafx.scene.Group;
+import javafx.application.Platform;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.TransferMode;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.FileReader;
+import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 
 public class App extends Application {
 
     public final static boolean DEBUGGING = true;
+    private FileSender fileSender = null;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        Group root = new Group();
-        primaryStage.setScene(new Scene(root));
-//        primaryStage.show();
+        BorderPane root = new BorderPane();
 
-        testSendFile();
+        ImageView dragAndDropArea = new ImageView("DragAndDropIcon.png");
+
+        dragAndDropArea.setOnDragOver(new EventHandler<DragEvent>() {
+            @Override
+            public void handle(DragEvent event) {
+                if (event.getDragboard().hasFiles()){
+                    if (DEBUGGING){
+                        System.out.println("Dragged Over Drag and Drop....");
+                    }
+                    event.acceptTransferModes(TransferMode.ANY);
+                }
+            }
+        });
+
+        dragAndDropArea.setOnDragDropped(new EventHandler<DragEvent>() {
+            @Override
+            public void handle(DragEvent event) {
+                if (DEBUGGING){
+                    System.out.println("Dropped Onto Drag and Drop.....");
+                }
+
+                List<File> files = event.getDragboard().getFiles();
+                if (DEBUGGING){
+                    for (File f : files){
+                        System.out.println(String.format("File dragged: %s", f.toString()));
+                    }
+                }
+            }
+        });
+
+        root.setLeft(dragAndDropArea);
+
+        VBox topBar = new VBox();
+        TextField currentUrl = new TextField("/");
+        MenuBar menuBar = new MenuBar();
+        Menu menuFile = new Menu("File");
+        menuBar.getMenus().addAll(menuFile);
+
+        topBar.getChildren().addAll(menuBar, currentUrl);
+
+        root.setTop(topBar);
+
+        ListView folderItems = new ListView();
+        folderItems.getItems().add("Testing");
+        folderItems.getItems().add("Testing2");
+        root.setCenter(folderItems);
+
+
+        primaryStage.setScene(new Scene(root));
+        primaryStage.show();
+
+        SSHSessionCredentials credentials = null;
+
+        while (credentials == null || isInvalidCredentials(credentials)){
+            credentials = promptUserForConnection();
+        }
+
+        if (DEBUGGING){
+            System.out.println(credentials.getHostName());
+            System.out.println(credentials.getUsername());
+            System.out.println(credentials.getPassword());
+        }
+
+        configureJschClient(credentials);
+
+//        testSendFile();
+
     }
 
-    public void testSendFile(){
+    private SSHSessionCredentials promptUserForConnection(){
+        Dialog<SSHSessionCredentials> hostAndUserNameDialog = new Dialog<>();
+        hostAndUserNameDialog.setTitle("Host and Username");
+        hostAndUserNameDialog.setHeaderText("Please enter your hostname, username, and password");
 
+        ButtonType connectButtonType = new ButtonType("Connect", ButtonBar.ButtonData.OK_DONE);
+        hostAndUserNameDialog.getDialogPane().getButtonTypes().addAll(connectButtonType, ButtonType.CANCEL);
+
+        GridPane gridPane = new GridPane();
+        gridPane.setHgap(10);
+        gridPane.setVgap(10);
+        gridPane.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField hostnameField = new TextField();
+        hostnameField.setPromptText("hostname");
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("username");
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("password");
+
+        gridPane.add(new Label("Hostname:"), 0, 0);
+        gridPane.add(hostnameField, 1, 0);
+        gridPane.add(new Label("Username:"), 0, 1);
+        gridPane.add(usernameField, 1, 1);
+        gridPane.add(new Label("Password:"), 0, 2);
+        gridPane.add(passwordField, 1, 2);
+
+
+        hostAndUserNameDialog.getDialogPane().setContent(gridPane);
+
+        Platform.runLater(() -> hostnameField.requestFocus());
+
+        hostAndUserNameDialog.setResultConverter(dialogButton -> {
+            if (dialogButton == connectButtonType){
+                return new SSHSessionCredentials(hostnameField.getText(), usernameField.getText(), passwordField.getText());
+            }
+            return null;
+        });
+
+        Optional<SSHSessionCredentials> sshSessionCredentialsOptional = hostAndUserNameDialog.showAndWait();
+
+        if (sshSessionCredentialsOptional.isPresent()){
+            return sshSessionCredentialsOptional.get();
+        }
+        else{
+            System.exit(0);
+        }
+
+        return null;
+
+    }
+
+    private boolean isInvalidCredentials(SSHSessionCredentials credentials) {
+        return credentials == null ||
+                isEmptyOrNullString(credentials.getHostName()) ||
+                isEmptyOrNullString(credentials.getUsername()) ||
+                isEmptyOrNullString(credentials.getPassword());
+    }
+
+
+    private boolean isEmptyOrNullString(String s){
+        return s == null || s.length() == 0;
+    }
+
+    public void sendFile(String fileName){
+
+        if (fileSender == null){
+            if (DEBUGGING){
+                System.out.println("Trying to send when Jsch is not configured");
+            }
+            //todo: not configured yet.
+            return;
+        }
+
+        fileSender.sendFile(fileName);
+    }
+
+    public void configureJschClient(SSHSessionCredentials credentials){
         String knownHosts = System.getenv("USERPROFILE").concat("\\.ssh\\known_hosts");
         String saveFile = System.getenv("APPDATA").concat("\\FileTransfer");
 
@@ -46,7 +198,27 @@ public class App extends Application {
             }
         }
 
-        String hostToConnect = "linux.student.cs.uwaterloo.ca";
+        this.fileSender = new FileSender();
+
+        try{
+            fileSender.configureJsch(knownHosts, credentials.getHostName(), credentials.getUsername(), credentials.getPassword());
+        }
+        catch (JSchException e){
+            if (App.DEBUGGING){
+                e.printStackTrace();
+                System.out.println("JSchException has been thrown...");
+            }
+            //todo: failed to configure....
+        }
+
+        if (App.DEBUGGING){
+            System.out.println("Done Configuring Jsch!");
+        }
+
+
+    }
+
+    public void testSendFile(){
 
         Properties loginProperties = new Properties();
 
@@ -60,22 +232,12 @@ public class App extends Application {
             return;
         }
 
+        String hostname = "linux.student.cs.uwaterloo.ca";
         String username = loginProperties.getProperty("username");
         String password = loginProperties.getProperty("password");
 
-        FileSender fileSender = new FileSender();
-        try{
-            fileSender.configureJsch(knownHosts, hostToConnect, username, password);
-            fileSender.sendFile("test.txt");
-        }
-        catch (JSchException e){
-            if (App.DEBUGGING){
-                e.printStackTrace();
-                System.out.println("JSchException has been thrown...");
-            }
-            //todo: failed to configure....
-        }
-
+        configureJschClient(new SSHSessionCredentials(hostname, username, password));
+        sendFile("test.txt");
     }
 
 

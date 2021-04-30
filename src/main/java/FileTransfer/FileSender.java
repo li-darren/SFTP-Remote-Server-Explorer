@@ -51,19 +51,9 @@ public class FileSender {
         Session jschSession = jsch.getSession(username, host);
         jschSession.setPassword(password);
 
-        //todo: this is insecure, fix this
-        java.util.Properties config = new java.util.Properties();
-        config.put("StrictHostKeyChecking", "no");
-        jschSession.setConfig(config);
-
         jschSession.connect();
         this.channelSftp = (ChannelSftp) jschSession.openChannel("sftp");;
         this.channelSftp.connect();
-
-        if (App.DEBUGGING){
-            System.out.println("Done Configuring Jsch!");
-        }
-
     }
 
 }
