@@ -3,9 +3,12 @@
  */
 package FileTransfer;
 
+import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpException;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -28,6 +31,8 @@ public class App extends Application {
 
     public final static boolean DEBUGGING = true;
     private FileSender fileSender = null;
+    private TextField currentUrl = null;
+    ListView folderItems = null;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -66,7 +71,19 @@ public class App extends Application {
         root.setLeft(dragAndDropArea);
 
         VBox topBar = new VBox();
-        TextField currentUrl = new TextField("/");
+        currentUrl = new TextField("/");
+
+        currentUrl.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                if (DEBUGGING){
+                    System.out.println("Changing directory from url bar....");
+                }
+                setRemoteDirectoryToUrlBar();
+                updateUrlBarAndDirectories();
+            }
+        });
+
         MenuBar menuBar = new MenuBar();
         Menu menuFile = new Menu("File");
         menuBar.getMenus().addAll(menuFile);
@@ -75,7 +92,7 @@ public class App extends Application {
 
         root.setTop(topBar);
 
-        ListView folderItems = new ListView();
+        folderItems = new ListView();
         folderItems.getItems().add("Testing");
         folderItems.getItems().add("Testing2");
         root.setCenter(folderItems);
@@ -84,22 +101,47 @@ public class App extends Application {
         primaryStage.setScene(new Scene(root));
         primaryStage.show();
 
-        SSHSessionCredentials credentials = null;
-
-        while (credentials == null || isInvalidCredentials(credentials)){
-            credentials = promptUserForConnection();
-        }
-
-        if (DEBUGGING){
-            System.out.println(credentials.getHostName());
-            System.out.println(credentials.getUsername());
-            System.out.println(credentials.getPassword());
-        }
-
-        configureJschClient(credentials);
-
+//        SSHSessionCredentials credentials = null;
+//
+//        while (credentials == null || isInvalidCredentials(credentials)){
+//            credentials = promptUserForConnection();
+//        }
+//
+//        if (DEBUGGING){
+//            System.out.println(credentials.getHostName());
+//            System.out.println(credentials.getUsername());
+//            System.out.println(credentials.getPassword());
+//        }
+//
+//        configureJschClient(credentialsg);
+        testSendFile();
 //        testSendFile();
+        updateUrlBarAndDirectories();
 
+    }
+
+    private void updateUrlBarAndDirectories(){
+
+        System.out.println(String.format("File Sender text: %s", fileSender.getRemotePath()));
+        currentUrl.setText(fileSender.getRemotePath());
+
+        try{
+            folderItems.getItems().clear();
+            for (ChannelSftp.LsEntry entry : fileSender.listItems()){
+                folderItems.getItems().add(entry.getFilename());
+            }
+        }
+        catch(SftpException  e){
+            if (DEBUGGING){
+                System.out.println("Failed to set directory and path....");
+                e.printStackTrace();
+            }
+            //todo: show warning dialog
+        }
+    }
+
+    private void setRemoteDirectoryToUrlBar(){
+        fileSender.setRemotePath(currentUrl.getText());
     }
 
     private SSHSessionCredentials promptUserForConnection(){
