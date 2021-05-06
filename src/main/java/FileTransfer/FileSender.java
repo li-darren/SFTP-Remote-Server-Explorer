@@ -99,6 +99,9 @@ public class FileSender {
         Session jschSession = jsch.getSession(username, host);
         jschSession.setPassword(password);
 
+        //TODO: THIS IS TEMPORARY WORK AROUND
+        jschSession.setConfig("StrictHostKeyChecking", "no");
+
         jschSession.connect();
         this.channelSftp = (ChannelSftp) jschSession.openChannel("sftp");;
         this.channelSftp.connect();

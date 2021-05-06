@@ -20,6 +20,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 
 import java.io.File;
 import java.io.FileReader;
@@ -95,10 +96,19 @@ public class App extends Application {
         folderItems = new ListView();
         folderItems.getItems().add("Testing");
         folderItems.getItems().add("Testing2");
+
+        folderItems.setCellFactory(new Callback<ListView, ListCell>() {
+            @Override
+            public ListCell call(ListView param) {
+                return new FileListCell();
+            }
+        });
+
         root.setCenter(folderItems);
 
 
         primaryStage.setScene(new Scene(root));
+        primaryStage.setTitle("File Transfer");
         primaryStage.show();
 
 //        SSHSessionCredentials credentials = null;
@@ -113,9 +123,8 @@ public class App extends Application {
 //            System.out.println(credentials.getPassword());
 //        }
 //
-//        configureJschClient(credentialsg);
+//        configureJschClient(credentials);
         testSendFile();
-//        testSendFile();
         updateUrlBarAndDirectories();
 
     }
@@ -189,6 +198,7 @@ public class App extends Application {
             return sshSessionCredentialsOptional.get();
         }
         else{
+            System.out.flush();
             System.exit(0);
         }
 
@@ -246,17 +256,42 @@ public class App extends Application {
             fileSender.configureJsch(knownHosts, credentials.getHostName(), credentials.getUsername(), credentials.getPassword());
         }
         catch (JSchException e){
-            if (App.DEBUGGING){
+            if (DEBUGGING){
                 e.printStackTrace();
-                System.out.println("JSchException has been thrown...");
+                System.err.println("JSchException has been thrown...");
             }
+
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Error Configuring JSch Client");
+            alert.setHeaderText("Error Configuring JSch Client");
+            alert.setContentText("Would you like to retry?");
+            ButtonType yesButton = new ButtonType("Yes", ButtonBar.ButtonData.YES);
+            ButtonType noButton = new ButtonType("No", ButtonBar.ButtonData.NO);
+            ButtonType cancelButton = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(yesButton, noButton, cancelButton);
+
+            alert.showAndWait().ifPresent(type -> {
+                if (DEBUGGING){
+                    System.out.println(String.format("Button Type Pressed: %s", type.toString()));
+                }
+
+                if (type == ButtonType.YES) {
+
+                }
+                else if (type == ButtonType.NO) {
+
+                }
+                else if (type == ButtonType.CANCEL){
+
+                }
+            });
+
             //todo: failed to configure....
         }
 
         if (App.DEBUGGING){
             System.out.println("Done Configuring Jsch!");
         }
-
 
     }
 

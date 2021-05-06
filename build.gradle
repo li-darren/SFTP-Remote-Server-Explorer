@@ -30,7 +30,9 @@ dependencies {
 
     // https://mvnrepository.com/artifact/com.jcraft/jsch
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.54'
+
 }
+
 
 application {
     // Define the main class for the application.
@@ -39,5 +41,5 @@ application {
 
 javafx {
     version = "15.0.1"
-    modules = [ 'javafx.controls' ]
+    modules = [ 'javafx.controls' , 'javafx.swing']
 }
