@@ -5,6 +5,7 @@ package FileTransfer;
 
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -13,27 +14,29 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import org.checkerframework.checker.units.qual.A;
 
 import java.io.File;
 import java.io.FileReader;
-import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 
 public class App extends Application {
 
     public final static boolean DEBUGGING = true;
     private FileSender fileSender = null;
     private TextField currentUrl = null;
-    ListView folderItems = null;
+    ListView<FileInfo> folderItems = null;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -94,18 +97,43 @@ public class App extends Application {
         root.setTop(topBar);
 
         folderItems = new ListView();
-        folderItems.getItems().add("Testing");
-        folderItems.getItems().add("Testing2");
 
-        folderItems.setCellFactory(new Callback<ListView, ListCell>() {
+        //initialize the folder icon
+        folderItems.getItems().add(new FileInfo(".", null));
+
+        folderItems.setCellFactory(lv -> new ListCell<FileInfo>(){
             @Override
-            public ListCell call(ListView param) {
-                return new FileListCell();
+            public void updateItem(FileInfo entry, boolean empty){
+                super.updateItem(entry, empty);
+
+                if (empty){
+                    setText(null);
+                    setGraphic(null);
+                }
+                else{
+                    Image image;
+
+                    if (entry.getSftpATTRS() == null || entry.getSftpATTRS().isDir()){
+                        image = IconFetcher.getFileIcon(".");
+                    }
+                    else{
+                        image = IconFetcher.getFileIcon(entry.getFileName());
+                    }
+
+                    setGraphic(new ImageView(image));
+                    setText(entry.getFileName());
+                    setOnMouseClicked(mouseClickedEvent -> {
+                        if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2){
+                            if (DEBUGGING){
+                                System.out.println(String.format("Item: %s has been double clicked", entry.getFileName()));
+                            }
+                        }
+                    });
+                }
             }
         });
 
         root.setCenter(folderItems);
-
 
         primaryStage.setScene(new Scene(root));
         primaryStage.setTitle("File Transfer");
@@ -136,9 +164,16 @@ public class App extends Application {
 
         try{
             folderItems.getItems().clear();
-            for (ChannelSftp.LsEntry entry : fileSender.listItems()){
-                folderItems.getItems().add(entry.getFilename());
+
+            ArrayList<FileInfo> directoryFiles = new ArrayList<>();
+
+            for (ChannelSftp.LsEntry entry : fileSender.listItems()) {
+                directoryFiles.add(new FileInfo(entry.getFilename(), entry.getAttrs()));
             }
+
+            Collections.sort(directoryFiles);
+
+            folderItems.getItems().addAll(directoryFiles);
         }
         catch(SftpException  e){
             if (DEBUGGING){

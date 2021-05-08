@@ -71,6 +71,11 @@ public class IconFetcher {
 
             if (fileIcon != null){
                 icon = convertJSwingIconToImage(fileIcon);
+
+                if (App.DEBUGGING){
+                    System.out.println(String.format("Adding file icon: %s for extension: %s", icon, extension));
+                }
+
                 extensionFileIconMapping.put(extension, icon);
             }
 
