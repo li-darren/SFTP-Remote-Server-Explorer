@@ -23,16 +23,20 @@ public class FileInfo implements Comparable<FileInfo>{
     @Override
     public int compareTo(FileInfo o) {
 
-        if ((sftpATTRS.isDir() && o.getSftpATTRS().isDir()) || (!sftpATTRS.isDir() && !o.getSftpATTRS().isDir())){
+        if ((isDirectoryOrLink(this.sftpATTRS) && isDirectoryOrLink(o.getSftpATTRS())) || (!isDirectoryOrLink(this.sftpATTRS) && !isDirectoryOrLink(o.getSftpATTRS()))){
             return this.fileName.compareTo(o.getFileName());
         }
 
-        if (sftpATTRS.isDir()){
+        if (isDirectoryOrLink(this.sftpATTRS)){
             return -1;
         }
 
         return 1;
 
-
     }
+
+    public static boolean isDirectoryOrLink(SftpATTRS attrs){
+        return attrs.isDir() || attrs.isLink();
+    }
+
 }

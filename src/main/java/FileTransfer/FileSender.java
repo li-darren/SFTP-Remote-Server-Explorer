@@ -26,7 +26,7 @@ public class FileSender {
         return channelSftp.ls(".");
     }
 
-    public void setRemotePath(String path){
+    public void cd(String path){
         try{
             if (App.DEBUGGING){
                 System.out.println(String.format("Changing remote path to: %s", path));

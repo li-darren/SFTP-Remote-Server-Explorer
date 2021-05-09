@@ -5,7 +5,6 @@ package FileTransfer;
 
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -18,14 +17,11 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.util.Callback;
-import org.checkerframework.checker.units.qual.A;
 
 import java.io.File;
 import java.io.FileReader;
@@ -114,9 +110,15 @@ public class App extends Application {
                     Image image;
 
                     if (entry.getSftpATTRS() == null || entry.getSftpATTRS().isDir()){
+                        System.out.println(String.format("%s is a directory", entry.getFileName()));
                         image = IconFetcher.getFileIcon(".");
                     }
+                    else if (entry.getSftpATTRS().isLink()){
+                        //todo: add icon for link
+                        image = null;
+                    }
                     else{
+                        System.out.println(String.format("%s is not a directory", entry.getFileName()));
                         image = IconFetcher.getFileIcon(entry.getFileName());
                     }
 
@@ -124,8 +126,18 @@ public class App extends Application {
                     setText(entry.getFileName());
                     setOnMouseClicked(mouseClickedEvent -> {
                         if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2){
-                            if (DEBUGGING){
-                                System.out.println(String.format("Item: %s has been double clicked", entry.getFileName()));
+                            if (FileInfo.isDirectoryOrLink(entry.getSftpATTRS())){
+                                if (DEBUGGING){
+                                    System.out.println(String.format("Opening directory: %s", entry.getFileName()));
+                                }
+                                fileSender.cd(entry.getFileName());
+                                updateUrlBarAndDirectories();
+                            }
+                            else{
+                                if (DEBUGGING){
+                                    System.out.println(String.format("Opening file: %s", entry.getFileName()));
+                                }
+                                //todo: open file
                             }
                         }
                     });
@@ -185,7 +197,7 @@ public class App extends Application {
     }
 
     private void setRemoteDirectoryToUrlBar(){
-        fileSender.setRemotePath(currentUrl.getText());
+        fileSender.cd(currentUrl.getText());
     }
 
     private SSHSessionCredentials promptUserForConnection(){
