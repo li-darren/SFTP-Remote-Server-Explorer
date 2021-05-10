@@ -35,25 +35,25 @@ public class FileMonitor {
             @Override
             public void onDirectoryCreate(File directory) {
                 Path relativePath = rootFileToMonitor.relativize(directory.toPath());
-                System.out.println(String.format("Created directory: %s", relativePath.toString()));
+//                System.out.println(String.format("Created directory: %s", relativePath.toString()));
             }
 
             @Override
             public void onDirectoryChange(File directory) {
                 Path relativePath = rootFileToMonitor.relativize(directory.toPath());
-                System.out.println(String.format("Changed directory: %s", relativePath.toString()));
+//                System.out.println(String.format("Changed directory: %s", relativePath.toString()));
             }
 
             @Override
             public void onDirectoryDelete(File directory) {
                 Path relativePath = rootFileToMonitor.relativize(directory.toPath());
-                System.out.println(String.format("Deleted directory: %s", relativePath.toString()));
+//                System.out.println(String.format("Deleted directory: %s", relativePath.toString()));
             }
 
             @Override
             public void onFileCreate(File file) {
                 Path relativePath = rootFileToMonitor.relativize(file.toPath());
-                System.out.println(String.format("File created: %s", relativePath.toString()));
+//                System.out.println(String.format("File created: %s", relativePath.toString()));
             }
 
             @Override
@@ -64,14 +64,14 @@ public class FileMonitor {
                 relativePathString = "/".concat(relativePathString);
                 System.out.println(String.format("File Changed: %s", relativePathString));
 
-                //toenable: when ready to test sending, enable this
-//                fileSender.sendFile(relativePathString, relativePathString);
+                String localFileDestination = file.toString().replace("\\", "/");
+                fileSender.sendFile(localFileDestination, relativePathString);
             }
 
             @Override
             public void onFileDelete(File file) {
                 Path relativePath = rootFileToMonitor.relativize(file.toPath());
-                System.out.println(String.format("File Deleted: %s", relativePath.toString()));
+//                System.out.println(String.format("File Deleted: %s", relativePath.toString()));
             }
         };
 

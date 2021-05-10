@@ -27,7 +27,7 @@ public class FileManagerWatchService {
             return;
         }
 
-        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY);
+        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
     }
 
     public void registerDirectoryRecursive(Path path) throws IOException {
@@ -54,12 +54,15 @@ public class FileManagerWatchService {
             while ((key = watchService.take()) != null) {
 
                 for (WatchEvent<?> event : key.pollEvents()) {
-                    if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
-                        System.out.println(String.format("Modified file: %s", event.context().toString()));
-                    }
-                    else if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE){
+                    if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE){
                         Path directory = (Path) event.context();
-                        System.out.println(directory.toString());
+                        System.out.println("Watch Service Create");
+                    }
+                    else if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE){
+                        System.out.println("Watch Service Delete");
+                    }
+                    else if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+                        System.out.println("Watch Service Modify");
                     }
                     if (!key.reset()) {
                         break;

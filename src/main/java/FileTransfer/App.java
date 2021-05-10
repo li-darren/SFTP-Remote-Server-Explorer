@@ -140,7 +140,15 @@ public class App extends Application {
                                 if (DEBUGGING){
                                     System.out.println(String.format("Opening file: %s", entry.getFileName()));
                                 }
-                                //todo: open file
+                                try {
+                                    copyAndOpenFile(entry.getFileName());
+                                } catch (SftpException e) {
+                                    if (DEBUGGING){
+                                        e.printStackTrace();
+                                    }
+                                    throw new RuntimeException("Failed to copy file locally...");
+                                    //todo: error message when failing to open file
+                                }
                             }
                         }
                     });
@@ -170,6 +178,25 @@ public class App extends Application {
         testSendFile();
         updateUrlBarAndDirectories();
 
+    }
+
+    private void copyAndOpenFile(String relativeFileName) throws SftpException {
+        String localSaveFolder = saveLoc + fileSender.getRemotePath();
+        File localSaveFolderFile = new File(localSaveFolder);
+        if (!localSaveFolderFile.exists()){
+            if (localSaveFolderFile.mkdirs()){
+                if (DEBUGGING){
+                    System.out.println(String.format("Successfully created folder: %s", localSaveFolder));
+                }
+            }
+            else{
+                throw new RuntimeException("Failed to create folder to handle remote file");
+                //todo: notify user
+            }
+        }
+        String localSaveLocation = localSaveFolder.concat("/").concat(relativeFileName);
+        System.out.println(String.format("Local Save Location %s", localSaveLocation));
+        fileSender.getFile(relativeFileName, localSaveLocation);
     }
 
     private void updateUrlBarAndDirectories(){
@@ -287,7 +314,8 @@ public class App extends Application {
     }
 
     private void configureJschClient(SSHSessionCredentials credentials){
-        String knownHosts = System.getenv("USERPROFILE").concat("\\.ssh\\known_hosts");
+        String knownHosts = System.getenv("USERPROFILE").replace("\\", "/");
+        knownHosts = knownHosts.concat("/.ssh/known_hosts");
 
         if (App.DEBUGGING){
             System.out.printf("Known Host: %s%n", knownHosts);
@@ -348,15 +376,12 @@ public class App extends Application {
     private void configureFileManager(){
         String format = "yyyy-MM-dd hh mm ss";
         String currentTime = new SimpleDateFormat(format).format(new Date());
-        saveLoc = System.getenv("APPDATA").concat("\\FileTransfer").concat("\\").concat(currentTime);
+        saveLoc = System.getenv("APPDATA").replace("\\", "/");
+        saveLoc = saveLoc.concat("/FileTransfer").concat("/").concat(currentTime);
         System.out.printf("Session Location: %s%n", saveLoc);
         File saveLocFile = new File(saveLoc);
 
         if (!saveLocFile.exists()){
-            if (App.DEBUGGING){
-                System.out.println("Appdata files does not exist, creating directory...");
-            }
-
             if (saveLocFile.mkdirs()){
                 if (DEBUGGING){
                     System.out.println("Created appdata successfully!");

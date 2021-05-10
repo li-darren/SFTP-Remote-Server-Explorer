@@ -59,6 +59,9 @@ public class FileSender {
 
     }
 
+    public void getFile(String remoteFilePath, String localFilePath) throws SftpException {
+        channelSftp.get(remoteFilePath, localFilePath);
+    }
 
     public void sendFile(String localFilePath, String remoteFilePath){
 
@@ -75,10 +78,6 @@ public class FileSender {
         File fileToSend = new File(localFilePath);
 
         if (fileToSend.exists()){
-            if (App.DEBUGGING){
-                System.out.println("File Exists!");
-            }
-
             try{
                 channelSftp.put(localFilePath, remoteFilePath);
             }
@@ -88,7 +87,9 @@ public class FileSender {
                 }
                 //todo: failed to transfer files....
             }
-
+        }
+        else{
+            throw new RuntimeException(String.format("Failed to transfer file, file doesn't exist: %s", localFilePath));
         }
 
     }
