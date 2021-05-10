@@ -60,7 +60,7 @@ public class FileSender {
     }
 
 
-    public void sendFile(String fileName){
+    public void sendFile(String localFilePath, String remoteFilePath){
 
         if (channelSftp == null){
             if (App.DEBUGGING){
@@ -72,7 +72,7 @@ public class FileSender {
 
         //todo: extract file name from path
 
-        File fileToSend = new File(fileName);
+        File fileToSend = new File(localFilePath);
 
         if (fileToSend.exists()){
             if (App.DEBUGGING){
@@ -80,7 +80,7 @@ public class FileSender {
             }
 
             try{
-                channelSftp.put(fileName, fileName);
+                channelSftp.put(localFilePath, remoteFilePath);
             }
             catch (Exception e){
                 if (App.DEBUGGING){

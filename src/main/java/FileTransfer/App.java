@@ -35,7 +35,7 @@ public class App extends Application {
     private TextField currentUrl = null;
     private ListView<FileInfo> folderItems = null;
     private String saveLoc = null;
-    private FileManager fileManager = null;
+    private FileMonitor fileMonitor = null;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -268,7 +268,7 @@ public class App extends Application {
         return s == null || s.length() == 0;
     }
 
-    public void sendFile(String fileName){
+    public void sendFileRemoteServer(String localFileSrc, String remoteFileDest){
 
         if (fileSender == null){
             if (DEBUGGING){
@@ -278,7 +278,7 @@ public class App extends Application {
             return;
         }
 
-        fileSender.sendFile(fileName);
+        fileSender.sendFile(localFileSrc, remoteFileDest);
     }
 
     public void configureEnvironment(SSHSessionCredentials credentials){
@@ -371,20 +371,12 @@ public class App extends Application {
         }
 
         try{
-            fileManager = new FileManager(fileSender);
-            fileManager.registerDirectory(saveLocFile.toPath());
-
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    fileManager.pollInfinitely();
-                }
-            }).start();
-
-            System.out.println("New Thread polling infinitely");
+            fileMonitor = new FileMonitor(saveLocFile, fileSender);
+            fileMonitor.startFileMonitor();
         }
         catch(Exception e){
-            //todo:
+            //todo: failed to start file monitor
+            throw new RuntimeException("Failed to start monitor...");
         }
     }
 
@@ -408,7 +400,7 @@ public class App extends Application {
         String password = loginProperties.getProperty("password");
 
         configureEnvironment(new SSHSessionCredentials(hostname, username, password));
-        sendFile("test.txt");
+        sendFileRemoteServer("test.txt", "test.txt");
     }
 
 

@@ -3,13 +3,14 @@ package FileTransfer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 
-public class FileManager {
+public class FileManagerWatchService {
 
     private final WatchService watchService;
     private final FileSender fileSender;
 
-    FileManager(FileSender fileSender) throws IOException {
+    FileManagerWatchService(FileSender fileSender) throws IOException {
         this.fileSender = fileSender;
         watchService = FileSystems.getDefault().newWatchService();
     }
@@ -26,7 +27,24 @@ public class FileManager {
             return;
         }
 
-        path.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
+        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY);
+    }
+
+    public void registerDirectoryRecursive(Path path) throws IOException {
+        if (path == null){
+            if (App.DEBUGGING){
+                System.out.println("Path is null, could not register....");
+            }
+            return;
+        }
+
+        Files.walkFileTree(path, new SimpleFileVisitor<>(){
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                dir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+                return FileVisitResult.CONTINUE;
+            }
+        });
 
     }
 
@@ -36,14 +54,13 @@ public class FileManager {
             while ((key = watchService.take()) != null) {
 
                 for (WatchEvent<?> event : key.pollEvents()) {
-                    if (event.kind() != StandardWatchEventKinds.ENTRY_MODIFY) {
-                        if (App.DEBUGGING) {
-                            System.out.println(String.format("Error, detected event of type not modify %s", event.kind().toString()));
-                        }
+                    if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+                        System.out.println(String.format("Modified file: %s", event.context().toString()));
                     }
-
-                    System.out.println(String.format("Modified file: %s", event.context().toString()));
-
+                    else if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE){
+                        Path directory = (Path) event.context();
+                        System.out.println(directory.toString());
+                    }
                     if (!key.reset()) {
                         break;
                     }
