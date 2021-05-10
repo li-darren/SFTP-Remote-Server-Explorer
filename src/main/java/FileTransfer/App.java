@@ -25,6 +25,7 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.FileReader;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class App extends Application {
@@ -32,7 +33,9 @@ public class App extends Application {
     public final static boolean DEBUGGING = true;
     private FileSender fileSender = null;
     private TextField currentUrl = null;
-    ListView<FileInfo> folderItems = null;
+    private ListView<FileInfo> folderItems = null;
+    private String saveLoc = null;
+    private FileManager fileManager = null;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -163,7 +166,7 @@ public class App extends Application {
 //            System.out.println(credentials.getPassword());
 //        }
 //
-//        configureJschClient(credentials);
+//        configureEnvironment(credentials);
         testSendFile();
         updateUrlBarAndDirectories();
 
@@ -278,23 +281,23 @@ public class App extends Application {
         fileSender.sendFile(fileName);
     }
 
-    public void configureJschClient(SSHSessionCredentials credentials){
+    public void configureEnvironment(SSHSessionCredentials credentials){
+        configureJschClient(credentials);
+        configureFileManager();
+    }
+
+    private void configureJschClient(SSHSessionCredentials credentials){
         String knownHosts = System.getenv("USERPROFILE").concat("\\.ssh\\known_hosts");
-        String saveFile = System.getenv("APPDATA").concat("\\FileTransfer");
 
         if (App.DEBUGGING){
             System.out.printf("Known Host: %s%n", knownHosts);
-            System.out.printf("Save File: %s%n", saveFile);
 
             File knownHostsFile = new File(knownHosts);
-            File saveFileFile = new File(saveFile);
 
             if (knownHostsFile.exists()){
                 System.out.println("Known Hosts Exists");
             }
-            if (saveFileFile.exists()){
-                System.out.println("Save File Exists");
-            }
+
         }
 
         this.fileSender = new FileSender();
@@ -342,6 +345,50 @@ public class App extends Application {
 
     }
 
+    private void configureFileManager(){
+        String format = "yyyy-MM-dd hh mm ss";
+        String currentTime = new SimpleDateFormat(format).format(new Date());
+        saveLoc = System.getenv("APPDATA").concat("\\FileTransfer").concat("\\").concat(currentTime);
+        System.out.printf("Session Location: %s%n", saveLoc);
+        File saveLocFile = new File(saveLoc);
+
+        if (!saveLocFile.exists()){
+            if (App.DEBUGGING){
+                System.out.println("Appdata files does not exist, creating directory...");
+            }
+
+            if (saveLocFile.mkdirs()){
+                if (DEBUGGING){
+                    System.out.println("Created appdata successfully!");
+                }
+            }
+            else{
+                if (DEBUGGING){
+                    System.out.println("Failed to create appdata...");
+                }
+                //todo: failed creating appdata...
+            }
+        }
+
+        try{
+            fileManager = new FileManager(fileSender);
+            fileManager.registerDirectory(saveLocFile.toPath());
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    fileManager.pollInfinitely();
+                }
+            }).start();
+
+            System.out.println("New Thread polling infinitely");
+        }
+        catch(Exception e){
+            //todo:
+        }
+    }
+
+
     public void testSendFile(){
 
         Properties loginProperties = new Properties();
@@ -360,7 +407,7 @@ public class App extends Application {
         String username = loginProperties.getProperty("username");
         String password = loginProperties.getProperty("password");
 
-        configureJschClient(new SSHSessionCredentials(hostname, username, password));
+        configureEnvironment(new SSHSessionCredentials(hostname, username, password));
         sendFile("test.txt");
     }
 
