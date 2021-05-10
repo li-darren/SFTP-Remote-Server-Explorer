@@ -13,6 +13,11 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
@@ -23,10 +28,13 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 
 public class App extends Application {
 
@@ -147,6 +155,14 @@ public class App extends Application {
                                         e.printStackTrace();
                                     }
                                     throw new RuntimeException("Failed to copy file locally...");
+                                    //todo: error message when failing to transfer file
+                                }
+                                catch(IOException e){
+                                    if (DEBUGGING){
+                                        e.printStackTrace();
+                                        System.out.println("Failed to open file");
+                                    }
+                                    throw new RuntimeException("Failed to open file after copying locally...");
                                     //todo: error message when failing to open file
                                 }
                             }
@@ -180,7 +196,7 @@ public class App extends Application {
 
     }
 
-    private void copyAndOpenFile(String relativeFileName) throws SftpException {
+    private void copyAndOpenFile(String relativeFileName) throws SftpException, IOException {
         String localSaveFolder = saveLoc + fileSender.getRemotePath();
         File localSaveFolderFile = new File(localSaveFolder);
         if (!localSaveFolderFile.exists()){
@@ -197,6 +213,8 @@ public class App extends Application {
         String localSaveLocation = localSaveFolder.concat("/").concat(relativeFileName);
         System.out.println(String.format("Local Save Location %s", localSaveLocation));
         fileSender.getFile(relativeFileName, localSaveLocation);
+
+        Desktop.getDesktop().open(new File(localSaveLocation));
     }
 
     private void updateUrlBarAndDirectories(){
