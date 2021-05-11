@@ -3,6 +3,7 @@
  */
 package FileTransfer;
 
+import com.google.common.io.Files;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
@@ -32,6 +33,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -44,6 +47,7 @@ public class App extends Application {
     private ListView<FileInfo> folderItems = null;
     private String saveLoc = null;
     private FileMonitor fileMonitor = null;
+    private final static String linkIconKey = ";/link/";
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -105,9 +109,6 @@ public class App extends Application {
 
         folderItems = new ListView();
 
-        //initialize the folder icon
-        folderItems.getItems().add(new FileInfo(".", null));
-
         folderItems.setCellFactory(lv -> new ListCell<FileInfo>(){
             @Override
             public void updateItem(FileInfo entry, boolean empty){
@@ -121,16 +122,16 @@ public class App extends Application {
                     Image image;
 
                     if (entry.getSftpATTRS() == null || entry.getSftpATTRS().isDir()){
-                        System.out.println(String.format("%s is a directory", entry.getFileName()));
-                        image = IconFetcher.getFileIcon(".");
+                        image = IconFetcher.getFileIcon(".", ".");
                     }
                     else if (entry.getSftpATTRS().isLink()){
                         //todo: add icon for link
                         image = null;
                     }
                     else{
-                        System.out.println(String.format("%s is not a directory", entry.getFileName()));
-                        image = IconFetcher.getFileIcon(entry.getFileName());
+                        String fileName = entry.getFileName();
+                        final String extension = IconFetcher.getFileExtension(fileName);
+                        image = IconFetcher.getFileIcon(fileName, extension);
                     }
 
                     setGraphic(new ImageView(image));
@@ -191,9 +192,18 @@ public class App extends Application {
 //        }
 //
 //        configureEnvironment(credentials);
-        testSendFile();
-        updateUrlBarAndDirectories();
 
+        configureTestEnvironment();
+
+        initializeDirAndLinkIcons();
+
+        updateUrlBarAndDirectories();
+    }
+
+    private void initializeDirAndLinkIcons(){
+        //initialize the folder icon
+//        IconFetcher.addFileIcon(".", ".");
+        IconFetcher.addFileIcon("testShortcut", "lnk");
     }
 
     private void copyAndOpenFile(String relativeFileName) throws SftpException, IOException {
@@ -424,7 +434,7 @@ public class App extends Application {
     }
 
 
-    public void testSendFile(){
+    public void configureTestEnvironment(){
 
         Properties loginProperties = new Properties();
 
@@ -443,7 +453,6 @@ public class App extends Application {
         String password = loginProperties.getProperty("password");
 
         configureEnvironment(new SSHSessionCredentials(hostname, username, password));
-        sendFileRemoteServer("test.txt", "test.txt");
     }
 
 

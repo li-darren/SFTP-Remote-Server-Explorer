@@ -13,8 +13,8 @@ public class IconFetcher {
 
     private static HashMap<String, Image> extensionFileIconMapping = new HashMap<>();
 
-    private static String getFileExtension(String name){
-        String extension = ".";
+    public static String getFileExtension(String name){
+        String extension = "";
         int indexOfExtension = name.lastIndexOf(extension);
         if (indexOfExtension >= 0){
             extension = name.substring(indexOfExtension);
@@ -40,44 +40,65 @@ public class IconFetcher {
         return icon;
     }
 
-    public static Image getFileIcon(String fileName){
+    private static Icon createFileToCreateExtension(String extension){
+        File tempFile = null;
+        Icon fileIcon = null;
+        try {
+            tempFile = File.createTempFile("tempFile", extension);
+            fileIcon = getJSwingIconFromSystem(tempFile);
+        } catch (Exception e) {
+            if (App.DEBUGGING) {
+                System.out.println("Failed to get icon and could not create temp file...");
+                e.printStackTrace();
+            }
+        } finally {
+            if (tempFile != null) {
+                tempFile.delete();
+            }
+        }
 
-        final String extension = getFileExtension(fileName);
+        return fileIcon;
+    }
+
+    public static Image addFileIcon(String fileName, String extension){
+
+        if (extensionFileIconMapping.containsKey(extension)){
+            if (App.DEBUGGING){
+                System.out.println(String.format("Didn't add extension: \"%s\", already exists", extension));
+            }
+            return null;
+        }
+
+        File file = new File(fileName);
+
+        Icon fileIcon;
+
+        if (file.exists()) {
+            fileIcon = getJSwingIconFromSystem(file);
+        } else {
+            fileIcon = createFileToCreateExtension(extension);
+        }
+
+        if (fileIcon != null){
+            Image icon = convertJSwingIconToImage(fileIcon);
+            extensionFileIconMapping.put(extension, icon);
+            return icon;
+        }
+
+        return null;
+
+    }
+
+    public static Image getFileIcon(String fileName, String extension){
+
+        System.out.println(String.format("File Name: \"%s\", extension: \"%s\"", fileName, extension));
         Image icon = extensionFileIconMapping.get(extension);
 
         if (icon == null) {
-            File file = new File(fileName);
-
-            Icon fileIcon = null;
-
-            if (file.exists()) {
-                fileIcon = getJSwingIconFromSystem(file);
-            } else {
-                File tempFile = null;
-                try {
-                    tempFile = File.createTempFile("tempFile", extension);
-                    fileIcon = getJSwingIconFromSystem(tempFile);
-                } catch (Exception e) {
-                    if (App.DEBUGGING) {
-                        System.out.println("Failed to get icon and could not create temp file...");
-                        e.printStackTrace();
-                    }
-                } finally {
-                    if (tempFile != null) {
-                        tempFile.delete();
-                    }
-                }
-            }
-
-            if (fileIcon != null){
-                icon = convertJSwingIconToImage(fileIcon);
-                extensionFileIconMapping.put(extension, icon);
-            }
-
+            icon = addFileIcon(fileName, extension);
         }
 
         return icon;
-
     }
 
     private static Image convertJSwingIconToImage(Icon jSwingIcon){
