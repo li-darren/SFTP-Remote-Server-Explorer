@@ -15,7 +15,7 @@ public class IconFetcher {
 
     public static String getFileExtension(String name){
         String extension = "";
-        int indexOfExtension = name.lastIndexOf(extension);
+        int indexOfExtension = name.lastIndexOf(".");
         if (indexOfExtension >= 0){
             extension = name.substring(indexOfExtension);
         }

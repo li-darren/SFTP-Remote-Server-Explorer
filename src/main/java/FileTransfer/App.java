@@ -3,7 +3,6 @@
  */
 package FileTransfer;
 
-import com.google.common.io.Files;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
@@ -21,20 +20,16 @@ import javafx.scene.control.MenuBar;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.TransferMode;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.input.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.sql.SQLOutput;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -136,6 +131,85 @@ public class App extends Application {
 
                     setGraphic(new ImageView(image));
                     setText(entry.getFileName());
+
+                    //////////////////////
+                    //DRAG FROM EXTERNAL INTO APPLICATION
+                    //////////////////////
+
+                    setOnDragEntered(new EventHandler<DragEvent>() {
+                        @Override
+                        public void handle(DragEvent event) {
+                            if (event.getGestureSource() != this && event.getDragboard().hasFiles()){
+                                setBackground(new Background(new BackgroundFill(Color.LIGHTBLUE, CornerRadii.EMPTY, Insets.EMPTY)));
+                            }
+                            event.consume();
+                        }
+                    });
+
+                    setOnDragExited(new EventHandler<DragEvent>() {
+                        @Override
+                        public void handle(DragEvent event) {
+                            setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
+                            event.consume();
+                        }
+                    });
+
+                    setOnDragOver(new EventHandler<DragEvent>() {
+                        @Override
+                        public void handle(DragEvent event) {
+                            if (event.getGestureSource() != this && event.getDragboard().hasFiles()){
+                                event.acceptTransferModes(TransferMode.ANY);
+                            }
+                            event.consume();
+                        }
+                    });
+
+                    setOnDragDropped(new EventHandler<DragEvent>() {
+                        @Override
+                        public void handle(DragEvent event) {
+                            Dragboard db = event.getDragboard();
+                            boolean success = false;
+                            if (db.hasFiles()){
+                                success = true;
+                                for (File file : db.getFiles()){
+                                    if (App.DEBUGGING){
+                                        System.out.println(String.format("Dragged file %s", file.toString()));
+                                    }
+                                }
+                            }
+
+                            event.setDropCompleted(success);
+                            event.consume();
+                        }
+                    });
+
+                    //////////////////////
+                    //DRAG FROM APPLICATION TO EXTERNAL
+                    //////////////////////
+
+                    setOnDragDetected(new EventHandler<MouseEvent>() {
+                        @Override
+                        public void handle(MouseEvent event) {
+                            Dragboard db = startDragAndDrop(TransferMode.ANY);
+
+                            ClipboardContent content = new ClipboardContent();
+                            content.putFiles(new ArrayList<>(Arrays.asList(new File("/test"))));
+                            content.putString(getText());
+                            db.setContent(content);
+                            if (DEBUGGING){
+                                System.out.println(String.format("Dragging %s", getText()));
+                            }
+                            event.consume();
+                        }
+                    });
+
+                    setOnDragDone(new EventHandler<DragEvent>() {
+                        @Override
+                        public void handle(DragEvent event) {
+                            System.out.println(String.format("Drag Done: %s", event.getTarget()));
+                        }
+                    });
+
                     setOnMouseClicked(mouseClickedEvent -> {
                         if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2){
                             if (FileInfo.isDirectoryOrLink(entry.getSftpATTRS())){
@@ -200,10 +274,17 @@ public class App extends Application {
         updateUrlBarAndDirectories();
     }
 
-    private void initializeDirAndLinkIcons(){
+    private void initializeDirAndLinkIcons() throws IOException {
         //initialize the folder icon
 //        IconFetcher.addFileIcon(".", ".");
         IconFetcher.addFileIcon("testShortcut", "lnk");
+
+        File fileSrc = new File(saveLoc, "fileSrc");
+        fileSrc.mkdir();
+        File linkFile = new File(saveLoc, "linkFile");
+        linkFile.mkdir();
+//        Files.createSymbolicLink(linkFile.toPath(), fileSrc.toPath());
+
     }
 
     private void copyAndOpenFile(String relativeFileName) throws SftpException, IOException {
