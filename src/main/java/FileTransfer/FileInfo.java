@@ -20,6 +20,14 @@ public class FileInfo implements Comparable<FileInfo>{
         return sftpATTRS;
     }
 
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public void setSftpATTRS(SftpATTRS sftpATTRS) {
+        this.sftpATTRS = sftpATTRS;
+    }
+
     @Override
     public int compareTo(FileInfo o) {
 

@@ -29,7 +29,6 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.sql.SQLOutput;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -47,38 +46,6 @@ public class App extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         BorderPane root = new BorderPane();
-
-        ImageView dragAndDropArea = new ImageView("DragAndDropIcon.png");
-
-        dragAndDropArea.setOnDragOver(new EventHandler<DragEvent>() {
-            @Override
-            public void handle(DragEvent event) {
-                if (event.getDragboard().hasFiles()){
-                    if (DEBUGGING){
-                        System.out.println("Dragged Over Drag and Drop....");
-                    }
-                    event.acceptTransferModes(TransferMode.ANY);
-                }
-            }
-        });
-
-        dragAndDropArea.setOnDragDropped(new EventHandler<DragEvent>() {
-            @Override
-            public void handle(DragEvent event) {
-                if (DEBUGGING){
-                    System.out.println("Dropped Onto Drag and Drop.....");
-                }
-
-                List<File> files = event.getDragboard().getFiles();
-                if (DEBUGGING){
-                    for (File f : files){
-                        System.out.println(String.format("File dragged: %s", f.toString()));
-                    }
-                }
-            }
-        });
-
-        root.setLeft(dragAndDropArea);
 
         VBox topBar = new VBox();
         currentUrl = new TextField("/");
@@ -103,6 +70,35 @@ public class App extends Application {
         root.setTop(topBar);
 
         folderItems = new ListView();
+
+        folderItems.setOnDragOver(new EventHandler<DragEvent>() {
+            @Override
+            public void handle(DragEvent event) {
+                if (event.getGestureSource() != folderItems && event.getDragboard().hasFiles()){
+                    event.acceptTransferModes(TransferMode.ANY);
+                }
+                event.consume();
+            }
+        });
+
+        folderItems.setOnDragDropped(new EventHandler<DragEvent>() {
+            @Override
+            public void handle(DragEvent event) {
+                Dragboard db = event.getDragboard();
+                boolean success = false;
+                if (db.hasFiles()){
+                    success = true;
+                    for (File file : db.getFiles()){
+                        if (App.DEBUGGING){
+                            System.out.println(String.format("Dragged file into folderview %s", file.toString()));
+                        }
+                    }
+                }
+
+                event.setDropCompleted(success);
+                event.consume();
+            }
+        });
 
         folderItems.setCellFactory(lv -> new ListCell<FileInfo>(){
             @Override
@@ -131,42 +127,86 @@ public class App extends Application {
 
                     setGraphic(new ImageView(image));
                     setText(entry.getFileName());
+                }
 
-                    //////////////////////
-                    //DRAG FROM EXTERNAL INTO APPLICATION
-                    //////////////////////
+                setOnMouseClicked(mouseClickedEvent -> {
+                    if (!empty){
+                        if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2) {
+                            if (FileInfo.isDirectoryOrLink(entry.getSftpATTRS())) {
+                                if (DEBUGGING) {
+                                    System.out.println(String.format("Opening directory: %s", entry.getFileName()));
+                                }
+                                fileSender.cd(entry.getFileName());
+                                updateUrlBarAndDirectories();
+                            } else {
+                                if (DEBUGGING) {
+                                    System.out.println(String.format("Opening file: %s", entry.getFileName()));
+                                }
+                                try {
+                                    copyAndOpenFile(entry.getFileName());
+                                } catch (SftpException e) {
+                                    if (DEBUGGING) {
+                                        e.printStackTrace();
+                                    }
+                                    throw new RuntimeException("Failed to copy file locally...");
+                                    //todo: error message when failing to transfer file
+                                } catch (IOException e) {
+                                    if (DEBUGGING) {
+                                        e.printStackTrace();
+                                        System.out.println("Failed to open file");
+                                    }
+                                    throw new RuntimeException("Failed to open file after copying locally...");
+                                    //todo: error message when failing to open file
+                                }
+                            }
+                        }
+                    }
+                });
 
-                    setOnDragEntered(new EventHandler<DragEvent>() {
-                        @Override
-                        public void handle(DragEvent event) {
-                            if (event.getGestureSource() != this && event.getDragboard().hasFiles()){
+
+                //////////////////////
+                //DRAG FROM EXTERNAL INTO APPLICATION
+                //////////////////////
+
+                setOnDragEntered(new EventHandler<DragEvent>() {
+                    @Override
+                    public void handle(DragEvent event) {
+                        if (!empty){
+                            if (event.getGestureSource() != event.getGestureTarget() && event.getDragboard().hasFiles()){
                                 setBackground(new Background(new BackgroundFill(Color.LIGHTBLUE, CornerRadii.EMPTY, Insets.EMPTY)));
                             }
                             event.consume();
                         }
-                    });
+                    }
+                });
 
-                    setOnDragExited(new EventHandler<DragEvent>() {
-                        @Override
-                        public void handle(DragEvent event) {
+                setOnDragExited(new EventHandler<DragEvent>() {
+                    @Override
+                    public void handle(DragEvent event) {
+                        if (!empty){
                             setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
                             event.consume();
                         }
-                    });
+                    }
+                });
 
-                    setOnDragOver(new EventHandler<DragEvent>() {
-                        @Override
-                        public void handle(DragEvent event) {
-                            if (event.getGestureSource() != this && event.getDragboard().hasFiles()){
+                setOnDragOver(new EventHandler<DragEvent>() {
+                    @Override
+                    public void handle(DragEvent event) {
+                        if (!empty){
+                            if (event.getGestureSource() != event.getGestureTarget() && event.getDragboard().hasFiles() && FileInfo.isDirectoryOrLink(entry.getSftpATTRS())){
                                 event.acceptTransferModes(TransferMode.ANY);
+                                System.out.println("Accepting file...");
                             }
                             event.consume();
                         }
-                    });
+                    }
+                });
 
-                    setOnDragDropped(new EventHandler<DragEvent>() {
-                        @Override
-                        public void handle(DragEvent event) {
+                setOnDragDropped(new EventHandler<DragEvent>() {
+                    @Override
+                    public void handle(DragEvent event) {
+                        if (!empty){
                             Dragboard db = event.getDragboard();
                             boolean success = false;
                             if (db.hasFiles()){
@@ -181,15 +221,17 @@ public class App extends Application {
                             event.setDropCompleted(success);
                             event.consume();
                         }
-                    });
+                    }
+                });
 
-                    //////////////////////
-                    //DRAG FROM APPLICATION TO EXTERNAL
-                    //////////////////////
+                //////////////////////
+                //DRAG FROM APPLICATION TO EXTERNAL
+                //////////////////////
 
-                    setOnDragDetected(new EventHandler<MouseEvent>() {
-                        @Override
-                        public void handle(MouseEvent event) {
+                setOnDragDetected(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent event) {
+                        if (!empty){
                             Dragboard db = startDragAndDrop(TransferMode.ANY);
 
                             ClipboardContent content = new ClipboardContent();
@@ -201,49 +243,17 @@ public class App extends Application {
                             }
                             event.consume();
                         }
-                    });
+                    }
+                });
 
-                    setOnDragDone(new EventHandler<DragEvent>() {
-                        @Override
-                        public void handle(DragEvent event) {
+                setOnDragDone(new EventHandler<DragEvent>() {
+                    @Override
+                    public void handle(DragEvent event) {
+                        if (!empty){
                             System.out.println(String.format("Drag Done: %s", event.getTarget()));
                         }
-                    });
-
-                    setOnMouseClicked(mouseClickedEvent -> {
-                        if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2){
-                            if (FileInfo.isDirectoryOrLink(entry.getSftpATTRS())){
-                                if (DEBUGGING){
-                                    System.out.println(String.format("Opening directory: %s", entry.getFileName()));
-                                }
-                                fileSender.cd(entry.getFileName());
-                                updateUrlBarAndDirectories();
-                            }
-                            else{
-                                if (DEBUGGING){
-                                    System.out.println(String.format("Opening file: %s", entry.getFileName()));
-                                }
-                                try {
-                                    copyAndOpenFile(entry.getFileName());
-                                } catch (SftpException e) {
-                                    if (DEBUGGING){
-                                        e.printStackTrace();
-                                    }
-                                    throw new RuntimeException("Failed to copy file locally...");
-                                    //todo: error message when failing to transfer file
-                                }
-                                catch(IOException e){
-                                    if (DEBUGGING){
-                                        e.printStackTrace();
-                                        System.out.println("Failed to open file");
-                                    }
-                                    throw new RuntimeException("Failed to open file after copying locally...");
-                                    //todo: error message when failing to open file
-                                }
-                            }
-                        }
-                    });
-                }
+                    }
+                });
             }
         });
 
