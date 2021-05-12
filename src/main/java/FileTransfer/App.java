@@ -129,6 +129,8 @@ public class App extends Application {
                     setText(entry.getFileName());
                 }
 
+                ListCell currentListCell = this;
+
                 setOnMouseClicked(mouseClickedEvent -> {
                     if (!empty){
                         if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2) {
@@ -172,8 +174,9 @@ public class App extends Application {
                     @Override
                     public void handle(DragEvent event) {
                         if (!empty){
-                            if (event.getGestureSource() != event.getGestureTarget() && event.getDragboard().hasFiles()){
+                            if (event.getGestureSource() != currentListCell && event.getDragboard().hasFiles()){
                                 setBackground(new Background(new BackgroundFill(Color.LIGHTBLUE, CornerRadii.EMPTY, Insets.EMPTY)));
+                                setTextFill(Color.BLACK);
                             }
                             event.consume();
                         }
@@ -185,6 +188,7 @@ public class App extends Application {
                     public void handle(DragEvent event) {
                         if (!empty){
                             setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
+                            setTextFill(Color.BLACK);
                             event.consume();
                         }
                     }
@@ -194,9 +198,8 @@ public class App extends Application {
                     @Override
                     public void handle(DragEvent event) {
                         if (!empty){
-                            if (event.getGestureSource() != event.getGestureTarget() && event.getDragboard().hasFiles() && FileInfo.isDirectoryOrLink(entry.getSftpATTRS())){
+                            if (event.getGestureSource() != currentListCell && event.getDragboard().hasFiles() && FileInfo.isDirectoryOrLink(entry.getSftpATTRS())){
                                 event.acceptTransferModes(TransferMode.ANY);
-                                System.out.println("Accepting file...");
                             }
                             event.consume();
                         }
@@ -207,6 +210,7 @@ public class App extends Application {
                     @Override
                     public void handle(DragEvent event) {
                         if (!empty){
+                            Object currentListCellObj = currentListCell;
                             Dragboard db = event.getDragboard();
                             boolean success = false;
                             if (db.hasFiles()){
@@ -241,6 +245,10 @@ public class App extends Application {
                             if (DEBUGGING){
                                 System.out.println(String.format("Dragging %s", getText()));
                             }
+
+                            setBackground(new Background(new BackgroundFill(Color.BLUE, CornerRadii.EMPTY, Insets.EMPTY)));
+                            setTextFill(Color.BLACK);
+
                             event.consume();
                         }
                     }
@@ -252,6 +260,10 @@ public class App extends Application {
                         if (!empty){
                             System.out.println(String.format("Drag Done: %s", event.getTarget()));
                         }
+
+                        setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
+                        setTextFill(Color.BLACK);
+
                     }
                 });
             }
