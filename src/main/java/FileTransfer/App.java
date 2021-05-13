@@ -3,9 +3,7 @@
  */
 package FileTransfer;
 
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.SftpException;
+import com.jcraft.jsch.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -17,6 +15,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -31,13 +30,15 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.List;
 
 public class App extends Application {
 
-    public final static boolean DEBUGGING = true;
+    public final static boolean DEBUGGING = false;
     private FileSender fileSender = null;
+    private RemoteTerminal remoteTerminal = null;
     private TextField currentUrl = null;
+    private TextField commandInputBox = null;
+    private TextArea terminalOutput = null;
     private ListView<FileInfo> folderItems = null;
     private String saveLoc = null;
     private FileMonitor fileMonitor = null;
@@ -68,6 +69,23 @@ public class App extends Application {
         topBar.getChildren().addAll(menuBar, currentUrl);
 
         root.setTop(topBar);
+
+        commandInputBox = new TextField();
+        commandInputBox.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                System.err.println(String.format("Printing text: %s", commandInputBox.getText()));
+                remoteTerminal.sendCommand(commandInputBox.getText());
+                commandInputBox.setText("");
+            }
+        });
+
+        terminalOutput = new TextArea();
+
+        VBox terminalGroup = new VBox();
+        terminalGroup.getChildren().addAll(terminalOutput, commandInputBox);
+
+        root.setBottom(terminalGroup);
 
         folderItems = new ListView();
 
@@ -187,8 +205,11 @@ public class App extends Application {
                     @Override
                     public void handle(DragEvent event) {
                         if (!empty){
-                            setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
-                            setTextFill(Color.BLACK);
+                            System.out.println("Drag Exited");
+                            if (event.getGestureSource() != currentListCell){
+                                setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
+                                setTextFill(Color.BLACK);
+                            }
                             event.consume();
                         }
                     }
@@ -210,7 +231,6 @@ public class App extends Application {
                     @Override
                     public void handle(DragEvent event) {
                         if (!empty){
-                            Object currentListCellObj = currentListCell;
                             Dragboard db = event.getDragboard();
                             boolean success = false;
                             if (db.hasFiles()){
@@ -332,7 +352,6 @@ public class App extends Application {
 
     private void updateUrlBarAndDirectories(){
 
-        System.out.println(String.format("File Sender text: %s", fileSender.getRemotePath()));
         currentUrl.setText(fileSender.getRemotePath());
 
         try{
@@ -459,10 +478,10 @@ public class App extends Application {
 
         }
 
-        this.fileSender = new FileSender();
-
         try{
-            fileSender.configureJsch(knownHosts, credentials.getHostName(), credentials.getUsername(), credentials.getPassword());
+            JschSessionClient jschSession = new JschSessionClient(knownHosts, credentials.getHostName(), credentials.getUsername(), credentials.getPassword());
+            this.fileSender = new FileSender(jschSession.getJschSession());
+            this.remoteTerminal = new RemoteTerminal(jschSession.getJschSession(), new TextAreaOutputStream(terminalOutput));
         }
         catch (JSchException e){
             if (DEBUGGING){
@@ -509,7 +528,6 @@ public class App extends Application {
         String currentTime = new SimpleDateFormat(format).format(new Date());
         saveLoc = System.getenv("APPDATA").replace("\\", "/");
         saveLoc = saveLoc.concat("/FileTransfer").concat("/").concat(currentTime);
-        System.out.printf("Session Location: %s%n", saveLoc);
         File saveLocFile = new File(saveLoc);
 
         if (!saveLocFile.exists()){

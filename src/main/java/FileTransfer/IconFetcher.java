@@ -91,7 +91,7 @@ public class IconFetcher {
 
     public static Image getFileIcon(String fileName, String extension){
 
-        System.out.println(String.format("File Name: \"%s\", extension: \"%s\"", fileName, extension));
+//        System.out.println(String.format("File Name: \"%s\", extension: \"%s\"", fileName, extension));
         Image icon = extensionFileIconMapping.get(extension);
 
         if (icon == null) {

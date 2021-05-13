@@ -3,15 +3,15 @@ package FileTransfer;
 import com.jcraft.jsch.*;
 
 import java.io.File;
-import java.io.OutputStream;
-import java.nio.file.Path;
 import java.util.List;
 
 public class FileSender {
 
     ChannelSftp channelSftp = null;
 
-    FileSender(){
+    FileSender(Session jschSession) throws JSchException {
+        this.channelSftp = (ChannelSftp) jschSession.openChannel("sftp");;
+        this.channelSftp.connect();
     }
 
     public List<ChannelSftp.LsEntry> listItems() throws SftpException {
@@ -92,20 +92,6 @@ public class FileSender {
             throw new RuntimeException(String.format("Failed to transfer file, file doesn't exist: %s", localFilePath));
         }
 
-    }
-
-    public void configureJsch(String hostsFileLocation, String host, String username, String password) throws JSchException {
-        JSch jsch = new JSch();
-        jsch.setKnownHosts(hostsFileLocation);
-        Session jschSession = jsch.getSession(username, host);
-        jschSession.setPassword(password);
-
-        //TODO: THIS IS TEMPORARY WORK AROUND
-        jschSession.setConfig("StrictHostKeyChecking", "no");
-
-        jschSession.connect();
-        this.channelSftp = (ChannelSftp) jschSession.openChannel("sftp");;
-        this.channelSftp.connect();
     }
 
 }
