@@ -30,10 +30,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 
 public class App extends Application {
 
-    public final static boolean DEBUGGING = false;
+    public final static boolean DEBUGGING = true;
     private FileSender fileSender = null;
     private RemoteTerminal remoteTerminal = null;
     private TextField currentUrl = null;
@@ -163,7 +164,8 @@ public class App extends Application {
                                     System.out.println(String.format("Opening file: %s", entry.getFileName()));
                                 }
                                 try {
-                                    copyAndOpenFile(entry.getFileName());
+                                    File localSaveLocation = downloadFileLocally(entry.getFileName(), false);
+                                    Desktop.getDesktop().open(localSaveLocation);
                                 } catch (SftpException e) {
                                     if (DEBUGGING) {
                                         e.printStackTrace();
@@ -205,7 +207,6 @@ public class App extends Application {
                     @Override
                     public void handle(DragEvent event) {
                         if (!empty){
-                            System.out.println("Drag Exited");
                             if (event.getGestureSource() != currentListCell){
                                 setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
                                 setTextFill(Color.BLACK);
@@ -256,14 +257,32 @@ public class App extends Application {
                     @Override
                     public void handle(MouseEvent event) {
                         if (!empty){
-                            Dragboard db = startDragAndDrop(TransferMode.ANY);
+                            Dragboard db = startDragAndDrop(TransferMode.COPY);
 
                             ClipboardContent content = new ClipboardContent();
-                            content.putFiles(new ArrayList<>(Arrays.asList(new File("/test"))));
-                            content.putString(getText());
-                            db.setContent(content);
-                            if (DEBUGGING){
-                                System.out.println(String.format("Dragging %s", getText()));
+                            try {
+
+                                File localFileLocation;
+
+                                if (entry.getSftpATTRS().isLink()){
+                                    localFileLocation = null;
+                                    //todo:
+                                    throw new RuntimeException();
+                                }
+                                else{
+                                    localFileLocation = downloadFileLocally(entry.getFileName(), entry.getSftpATTRS().isDir());
+                                }
+
+                                System.out.println(String.format("Downloaded File Location: %s", localFileLocation.getPath()));
+                                content.putFiles(new ArrayList<>(Arrays.asList(localFileLocation)));
+                                content.putString(getText());
+                                db.setContent(content);
+                                if (DEBUGGING) {
+                                    System.out.println(String.format("Dragging %s", getText()));
+                                }
+                            }
+                            catch(SftpException e){
+                                e.printStackTrace();
                             }
 
                             setBackground(new Background(new BackgroundFill(Color.BLUE, CornerRadii.EMPTY, Insets.EMPTY)));
@@ -291,6 +310,8 @@ public class App extends Application {
 
         root.setCenter(folderItems);
 
+        primaryStage.setHeight(700);
+        primaryStage.setWidth(1000);
         primaryStage.setScene(new Scene(root));
         primaryStage.setTitle("File Transfer");
         primaryStage.show();
@@ -329,7 +350,7 @@ public class App extends Application {
 
     }
 
-    private void copyAndOpenFile(String relativeFileName) throws SftpException, IOException {
+    private File downloadFileLocally(String relativeFileName, boolean downloadFolder) throws SftpException {
         String localSaveFolder = saveLoc + fileSender.getRemotePath();
         File localSaveFolderFile = new File(localSaveFolder);
         if (!localSaveFolderFile.exists()){
@@ -343,11 +364,55 @@ public class App extends Application {
                 //todo: notify user
             }
         }
-        String localSaveLocation = localSaveFolder.concat("/").concat(relativeFileName);
-        System.out.println(String.format("Local Save Location %s", localSaveLocation));
-        fileSender.getFile(relativeFileName, localSaveLocation);
 
-        Desktop.getDesktop().open(new File(localSaveLocation));
+        String remoteSaveLocation = fileSender.getRemotePath().concat("/").concat(relativeFileName);
+        String localSaveLocation = saveLoc.concat(remoteSaveLocation);
+        if (DEBUGGING){
+            System.out.println(String.format("Remote Save Location %s", remoteSaveLocation));
+            System.out.println(String.format("Local Save Location %s", localSaveLocation));
+        }
+        
+        File rootFileLocation;
+
+        if (downloadFolder){
+            if (DEBUGGING){
+                System.out.println("Downloading Recursively...");
+            }
+
+            rootFileLocation = new File(localSaveLocation);
+            rootFileLocation.mkdir();
+
+            downloadFileRecursively(localSaveLocation, remoteSaveLocation);
+
+        }
+        else{
+            rootFileLocation = fileSender.getFile(relativeFileName, localSaveLocation);
+        }
+
+        return rootFileLocation;
+
+    }
+
+    private void downloadFileRecursively(String localSourceLocation, String remoteSourceLocation) throws SftpException{
+        System.out.println(String.format("Getting files for: %s", remoteSourceLocation));
+        List<ChannelSftp.LsEntry> dirList = fileSender.ls(remoteSourceLocation);
+
+        for (ChannelSftp.LsEntry entry : dirList){
+
+            String localFileLocation = localSourceLocation.concat("/").concat(entry.getFilename());
+            String remoteFileLocation = remoteSourceLocation.concat("/").concat(entry.getFilename());
+            //link will not be downloaded
+
+            if (!entry.getAttrs().isDir()){
+                fileSender.getFile(remoteFileLocation, localFileLocation);
+            }
+            else if ( ! (".".equals(entry.getFilename()) || "..".equals(entry.getFilename())) ){
+                new File(localFileLocation).mkdir();
+                downloadFileRecursively(localFileLocation, remoteFileLocation);
+            }
+
+        }
+
     }
 
     private void updateUrlBarAndDirectories(){

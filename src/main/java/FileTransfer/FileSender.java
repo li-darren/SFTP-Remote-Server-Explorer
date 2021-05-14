@@ -7,7 +7,7 @@ import java.util.List;
 
 public class FileSender {
 
-    ChannelSftp channelSftp = null;
+    private ChannelSftp channelSftp = null;
 
     FileSender(Session jschSession) throws JSchException {
         this.channelSftp = (ChannelSftp) jschSession.openChannel("sftp");;
@@ -24,6 +24,18 @@ public class FileSender {
         }
 
         return channelSftp.ls(".");
+    }
+
+    public List<ChannelSftp.LsEntry> ls (String location) throws SftpException {
+        if (channelSftp == null){
+            if (App.DEBUGGING){
+                System.out.println("File Sender is not configured yet...");
+            }
+            //todo: filesender is not configured yet....
+            return null;
+        }
+
+        return channelSftp.ls(location);
     }
 
     public void cd(String path){
@@ -59,8 +71,12 @@ public class FileSender {
 
     }
 
-    public void getFile(String remoteFilePath, String localFilePath) throws SftpException {
+    public File getFile(String remoteFilePath, String localFilePath) throws SftpException {
         channelSftp.get(remoteFilePath, localFilePath);
+        if (App.DEBUGGING){
+            System.out.println(String.format("Downloaded file locally... %s", localFilePath));
+        }
+        return new File(localFilePath);
     }
 
     public void sendFile(String localFilePath, String remoteFilePath){

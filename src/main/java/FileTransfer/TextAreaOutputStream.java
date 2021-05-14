@@ -23,7 +23,6 @@ public class TextAreaOutputStream extends OutputStream {
     public void write(int b){
         Platform.runLater(new Runnable() {
             public void run() {
-                System.out.print(String.valueOf((char) b));
                 textArea.appendText(String.valueOf((char) b));
                 textArea.appendText("");
             }
