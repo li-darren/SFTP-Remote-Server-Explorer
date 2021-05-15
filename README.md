@@ -1,12 +1,8 @@
 # FileTransfer
 
+A remote server file explorer that supports
+- Navigation of files
+- drag and drop
+- opening and editing files (auto update to server)
 
-
-
-
-
-
-
-Images Sources:
-Addition Logo:
-https://static.thenounproject.com/png/49665-200.png
+The current behaviour is to overwrite all files for any operation.
