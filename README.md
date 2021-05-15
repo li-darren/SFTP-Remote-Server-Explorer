@@ -2,7 +2,7 @@
 
 A remote server file explorer that supports
 - Navigation of files
-- Drag and Drop
+- Drag and Drop To Local Explorer
 - Opening and editing files (auto update to server)
 
 The current behaviour is to overwrite all files for any operation.
