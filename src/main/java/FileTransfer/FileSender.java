@@ -15,34 +15,46 @@ public class FileSender {
     }
 
     public List<ChannelSftp.LsEntry> listItems() throws SftpException {
-        if (channelSftp == null){
-            if (App.DEBUGGING){
-                System.out.println("File Sender is not configured yet...");
-            }
-            //todo: filesender is not configured yet....
+        if (!channelSftpConfigured()){
             return null;
         }
-
         return channelSftp.ls(".");
     }
 
     public List<ChannelSftp.LsEntry> ls (String location) throws SftpException {
+        if (!channelSftpConfigured()){
+            return null;
+        }
+        return channelSftp.ls(location);
+    }
+
+    public SftpATTRS stat (String path) throws SftpException {
+        if (!channelSftpConfigured()){
+            return null;
+        }
+        return channelSftp.stat(path);
+    }
+
+    private boolean channelSftpConfigured(){
         if (channelSftp == null){
             if (App.DEBUGGING){
                 System.out.println("File Sender is not configured yet...");
             }
             //todo: filesender is not configured yet....
-            return null;
+            return false;
         }
+        return true;
+    }
 
-        return channelSftp.ls(location);
+    public void mkdir(String dir) throws SftpException {
+        if (!channelSftpConfigured()){
+            return;
+        }
+        channelSftp.mkdir(dir);
     }
 
     public void cd(String path){
         try{
-            if (App.DEBUGGING){
-                System.out.println(String.format("Changing remote path to: %s", path));
-            }
             channelSftp.cd(path);
         }
         catch(SftpException e){
@@ -81,11 +93,7 @@ public class FileSender {
 
     public void sendFile(String localFilePath, String remoteFilePath){
 
-        if (channelSftp == null){
-            if (App.DEBUGGING){
-                System.out.println("File Sender is not configured yet...");
-            }
-            //todo: filesender is not configured yet....
+        if (!channelSftpConfigured()){
             return;
         }
 
@@ -99,6 +107,7 @@ public class FileSender {
             }
             catch (Exception e){
                 if (App.DEBUGGING){
+                    System.out.println("Failed to transfer files...");;
                     e.printStackTrace();
                 }
                 //todo: failed to transfer files....

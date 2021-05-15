@@ -28,6 +28,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -107,14 +109,28 @@ public class App extends Application {
                 boolean success = false;
                 if (db.hasFiles()){
                     success = true;
+
+                    String draggedInto = fileSender.getRemotePath();
+                    if (DEBUGGING){
+                        System.out.println(String.format("Dragged into root folder view: %s", draggedInto));
+                    }
+
                     for (File file : db.getFiles()){
                         if (App.DEBUGGING){
                             System.out.println(String.format("Dragged file into folderview %s", file.toString()));
+                        }
+                        try {
+                            uploadFileRecursively(file.toPath(), draggedInto);
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
                     }
                 }
 
                 event.setDropCompleted(success);
+
+                updateUrlBarAndDirectories();
+
                 event.consume();
             }
         });
@@ -236,9 +252,17 @@ public class App extends Application {
                             boolean success = false;
                             if (db.hasFiles()){
                                 success = true;
+
+                                String draggedInto = fileSender.getRemotePath().concat("/").concat(entry.getFileName());
+                                if (DEBUGGING){
+                                    System.out.println(String.format("Dragged into folder in cell: %s", draggedInto));
+                                }
+
                                 for (File file : db.getFiles()){
-                                    if (App.DEBUGGING){
-                                        System.out.println(String.format("Dragged file %s", file.toString()));
+                                    try {
+                                        uploadFileRecursively(file.toPath(), draggedInto);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
                                     }
                                 }
                             }
@@ -350,6 +374,60 @@ public class App extends Application {
 
     }
 
+    private void uploadFileRecursively(Path localPath, String remotePathRoot) throws IOException {
+
+        final String remotePathSubFolder = remotePathRoot.concat("/").concat(localPath.getFileName().toString());
+
+        if (DEBUGGING){
+            System.out.println(String.format("Local Path: %s", localPath));
+            System.out.println(String.format("Remote Path Root: %s", remotePathRoot));
+            System.out.println(String.format("Remote Path Subfolder: %s", remotePathSubFolder));
+        }
+
+        Files.walkFileTree(localPath, new SimpleFileVisitor<>(){
+            @Override
+            public FileVisitResult visitFile(Path dir, BasicFileAttributes attrs){
+                //only interested in files, not directories
+                Path relativeFilePath = localPath.relativize(dir);
+                String remoteFinalAbsolutePath = remotePathSubFolder;
+                if (!relativeFilePath.toString().equals("")){
+                    remoteFinalAbsolutePath = remoteFinalAbsolutePath.concat("/").concat(relativeFilePath.toString());
+                }
+                remoteFinalAbsolutePath = remoteFinalAbsolutePath.replace("\\", "/");
+
+                fileSender.sendFile(dir.toString(), remoteFinalAbsolutePath);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+
+                //create directories
+                Path relativeFilePath = localPath.relativize(dir);
+                String remoteFinalAbsolutePath = remotePathSubFolder;
+                if (!relativeFilePath.toString().equals("")){
+                    remoteFinalAbsolutePath = remoteFinalAbsolutePath.concat("/").concat(relativeFilePath.toString());
+                }
+                remoteFinalAbsolutePath = remoteFinalAbsolutePath.replace("\\", "/");
+
+                try {
+                    fileSender.stat(remoteFinalAbsolutePath);
+                } catch (SftpException e) {
+                    if (DEBUGGING){
+                        System.out.println("Directory doesn't exist...");
+                    }
+                    try {
+                        fileSender.mkdir(remoteFinalAbsolutePath);
+                    } catch (SftpException sftpException) {
+                        sftpException.printStackTrace();
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+        });
+    }
+
     private File downloadFileLocally(String relativeFileName, boolean downloadFolder) throws SftpException {
         String localSaveFolder = saveLoc + fileSender.getRemotePath();
         File localSaveFolderFile = new File(localSaveFolder);
@@ -371,7 +449,7 @@ public class App extends Application {
             System.out.println(String.format("Remote Save Location %s", remoteSaveLocation));
             System.out.println(String.format("Local Save Location %s", localSaveLocation));
         }
-        
+
         File rootFileLocation;
 
         if (downloadFolder){
