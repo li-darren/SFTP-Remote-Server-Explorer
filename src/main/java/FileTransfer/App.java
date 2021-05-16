@@ -6,6 +6,7 @@ package FileTransfer;
 import com.jcraft.jsch.*;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -23,11 +24,16 @@ import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import org.imgscalr.Scalr;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
@@ -46,6 +52,8 @@ public class App extends Application {
     private String saveLoc = null;
     private FileMonitor fileMonitor = null;
     private final static String linkIconKey = ";/link/";
+
+    public static final int iconSize = 16;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -152,14 +160,14 @@ public class App extends Application {
                     }
                     else if (entry.getSftpATTRS().isLink()){
                         //todo: add icon for link
-                        image = null;
+                        image = IconFetcher.getFileIcon("", ":link_icon");
                     }
                     else{
                         String fileName = entry.getFileName();
                         final String extension = IconFetcher.getFileExtension(fileName);
                         image = IconFetcher.getFileIcon(fileName, extension);
                     }
-
+                    
                     setGraphic(new ImageView(image));
                     setText(entry.getFileName());
                 }
@@ -366,12 +374,10 @@ public class App extends Application {
 //        IconFetcher.addFileIcon(".", ".");
         IconFetcher.addFileIcon("testShortcut", "lnk");
 
-        File fileSrc = new File(saveLoc, "fileSrc");
-        fileSrc.mkdir();
-        File linkFile = new File(saveLoc, "linkFile");
-        linkFile.mkdir();
-//        Files.createSymbolicLink(linkFile.toPath(), fileSrc.toPath());
-
+        BufferedImage shortcutBufferedImage = ImageIO.read(getClass().getClassLoader().getResource("shortcuticon.png"));
+        BufferedImage scaledShortcutBufferedImage = Scalr.resize(shortcutBufferedImage, iconSize);
+        Image shortcutIcon = SwingFXUtils.toFXImage(scaledShortcutBufferedImage, null);
+        IconFetcher.addFileIcon(":link_icon", shortcutIcon);
     }
 
     private void uploadFileRecursively(Path localPath, String remotePathRoot) throws IOException {

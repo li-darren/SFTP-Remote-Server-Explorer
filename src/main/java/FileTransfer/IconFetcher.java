@@ -2,6 +2,7 @@ package FileTransfer;
 
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
+import org.imgscalr.Scalr;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileSystemView;
@@ -60,6 +61,11 @@ public class IconFetcher {
         return fileIcon;
     }
 
+//    ensure size is App.iconSize bounded
+    public static void addFileIcon(String extension, Image icon){
+        extensionFileIconMapping.put(extension, icon);
+    }
+
     public static Image addFileIcon(String fileName, String extension){
 
         if (extensionFileIconMapping.containsKey(extension)){
@@ -105,9 +111,8 @@ public class IconFetcher {
         BufferedImage bufferedImage = new BufferedImage(jSwingIcon.getIconWidth(), jSwingIcon.getIconHeight(),
                 BufferedImage.TYPE_INT_ARGB);
         jSwingIcon.paintIcon(null, bufferedImage.getGraphics(), 0, 0);
-        return SwingFXUtils.toFXImage(bufferedImage, null);
+        BufferedImage scaledBufferedImage = Scalr.resize(bufferedImage, App.iconSize);
+        return SwingFXUtils.toFXImage(scaledBufferedImage, null);
     }
-
-
 
 }

@@ -7,3 +7,6 @@ A remote server file explorer that supports
 
 The current behaviour is to overwrite all files for any operation.
 Please use the tool at your own risk. I am not responsible for any damages that may occur when using this tool.
+
+Shortcut Icon:
+https://static.thenounproject.com/png/258144-200.png
