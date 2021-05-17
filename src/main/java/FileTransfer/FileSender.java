@@ -57,6 +57,13 @@ public class FileSender {
         channelSftp.mkdir(dir);
     }
 
+    public void rename(String oldPath, String newPath) throws SftpException {
+        if (!channelSftpConfigured()){
+            return;
+        }
+        channelSftp.rename(oldPath, newPath);
+    }
+
     public boolean isDir(String dir) throws SftpException {
         return channelSftp.stat(dir).isDir();
     }

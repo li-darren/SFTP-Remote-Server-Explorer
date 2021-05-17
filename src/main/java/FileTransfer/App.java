@@ -87,6 +87,7 @@ public class App extends Application {
                 System.err.println(String.format("Printing text: %s", commandInputBox.getText()));
                 remoteTerminal.sendCommand(commandInputBox.getText());
                 commandInputBox.setText("");
+                updateUrlBarAndDirectories();
             }
         });
 
@@ -150,8 +151,6 @@ public class App extends Application {
                     onFileInfoOpened(selectedFileInfo);
                 }
                 else if (event.getCode() == KeyCode.DELETE){
-
-
                     Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
                     alert.setTitle("Confirm Delete?");
                     alert.setHeaderText(null);
@@ -172,6 +171,26 @@ public class App extends Application {
                         }
                         updateUrlBarAndDirectories();
                     }
+                }
+                else if (event.getCode() == KeyCode.F2){
+                    TextInputDialog dialog = new TextInputDialog(selectedFileInfo.getFileName());
+                    dialog.setTitle("Rename Folder");
+                    dialog.setHeaderText(null);
+                    dialog.setContentText(String.format("Rename folder \"%s\" to:", selectedFileInfo.getFileName()));
+
+                    Optional<String> result = dialog.showAndWait();
+                    if (result.isPresent()){
+                        String oldPath = fileSender.getRemotePath() + "/" + selectedFileInfo.getFileName();
+                        String newPath = fileSender.getRemotePath() + "/" + result.get();
+                        try {
+                            fileSender.rename(oldPath, newPath);
+                        } catch (SftpException e) {
+                            e.printStackTrace();
+                            //todo: tell user it failed to configure
+                        }
+                    }
+
+                    updateUrlBarAndDirectories();
                 }
             }
         });
@@ -196,7 +215,6 @@ public class App extends Application {
                         image = IconFetcher.getFileIcon(".", ".");
                     }
                     else if (entry.getSftpATTRS().isLink()){
-                        //todo: add icon for link
                         image = IconFetcher.getFileIcon("", ":link_icon");
                     }
                     else{
@@ -211,14 +229,6 @@ public class App extends Application {
                 }
 
                 ListCell currentListCell = this;
-
-                setOnKeyPressed(new EventHandler<KeyEvent>() {
-                    @Override
-                    public void handle(KeyEvent event) {
-                        System.out.println("Key pressed...");
-                        System.out.println(event.getCode());
-                    }
-                });
 
                 setOnMouseClicked(mouseClickedEvent -> {
                     if (!empty){
@@ -311,35 +321,28 @@ public class App extends Application {
                     @Override
                     public void handle(MouseEvent event) {
                         if (!empty){
-                            Dragboard db = startDragAndDrop(TransferMode.COPY);
+                            if (!entry.getSftpATTRS().isLink()){
+                                Dragboard db = startDragAndDrop(TransferMode.COPY);
 
-                            ClipboardContent content = new ClipboardContent();
-                            try {
+                                ClipboardContent content = new ClipboardContent();
+                                try {
 
-                                File localFileLocation;
+                                    File localFileLocation = downloadFileLocally(entry.getFileName(), entry.getSftpATTRS().isDir());
 
-                                if (entry.getSftpATTRS().isLink()){
-                                    localFileLocation = null;
-                                    //todo:
-                                    throw new RuntimeException();
+                                    System.out.println(String.format("Downloaded File Location: %s", localFileLocation.getPath()));
+                                    content.putFiles(new ArrayList<>(Arrays.asList(localFileLocation)));
+                                    content.putString(getText());
+                                    db.setContent(content);
+                                    if (DEBUGGING) {
+                                        System.out.println(String.format("Dragging %s", getText()));
+                                    }
                                 }
-                                else{
-                                    localFileLocation = downloadFileLocally(entry.getFileName(), entry.getSftpATTRS().isDir());
+                                catch(SftpException e){
+                                    e.printStackTrace();
                                 }
 
-                                System.out.println(String.format("Downloaded File Location: %s", localFileLocation.getPath()));
-                                content.putFiles(new ArrayList<>(Arrays.asList(localFileLocation)));
-                                content.putString(getText());
-                                db.setContent(content);
-                                if (DEBUGGING) {
-                                    System.out.println(String.format("Dragging %s", getText()));
-                                }
+                                event.consume();
                             }
-                            catch(SftpException e){
-                                e.printStackTrace();
-                            }
-
-                            event.consume();
                         }
                     }
                 });
