@@ -12,6 +12,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
@@ -28,12 +29,10 @@ import org.imgscalr.Scalr;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
-import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
@@ -143,10 +142,48 @@ public class App extends Application {
             }
         });
 
+        folderItems.setOnKeyPressed(new EventHandler<KeyEvent>() {
+            @Override
+            public void handle(KeyEvent event) {
+                FileInfo selectedFileInfo = folderItems.getSelectionModel().getSelectedItem();
+                if (event.getCode() == KeyCode.ENTER){
+                    onFileInfoOpened(selectedFileInfo);
+                }
+                else if (event.getCode() == KeyCode.DELETE){
+
+
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Confirm Delete?");
+                    alert.setHeaderText(null);
+                    alert.setContentText(String.format("Are you sure you want to delete: \"%s\"?", selectedFileInfo.getFileName()));
+                    ((Button) alert.getDialogPane().lookupButton(ButtonType.OK)).setText("Yes");
+
+                    Optional<ButtonType> result = alert.showAndWait();
+                    if (result.get() == ButtonType.OK) {
+                        try {
+                            if (selectedFileInfo.getSftpATTRS().isDir()){
+                                fileSender.removeAllFolderContents(selectedFileInfo.getFileName());
+                            }
+                            else{
+                                fileSender.removeFile(selectedFileInfo.getFileName());
+                            }
+                        } catch (SftpException e) {
+                            e.printStackTrace();
+                        }
+                        updateUrlBarAndDirectories();
+                    }
+                }
+            }
+        });
+
         folderItems.setCellFactory(lv -> new ListCell<FileInfo>(){
             @Override
             public void updateItem(FileInfo entry, boolean empty){
                 super.updateItem(entry, empty);
+
+                getStylesheets().clear();
+                String style = getClass().getClassLoader().getResource("ListCellStyling/ListCellStyling.css").toExternalForm();
+                getStylesheets().add(style);
 
                 if (empty){
                     setText(null);
@@ -167,48 +204,29 @@ public class App extends Application {
                         final String extension = IconFetcher.getFileExtension(fileName);
                         image = IconFetcher.getFileIcon(fileName, extension);
                     }
-                    
+
                     setGraphic(new ImageView(image));
                     setText(entry.getFileName());
+
                 }
 
                 ListCell currentListCell = this;
 
-                setOnMouseClicked(mouseClickedEvent -> {
-                    if (!empty){
-                        if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2) {
-                            if (FileInfo.isDirectoryOrLink(entry.getSftpATTRS())) {
-                                if (DEBUGGING) {
-                                    System.out.println(String.format("Opening directory: %s", entry.getFileName()));
-                                }
-                                fileSender.cd(entry.getFileName());
-                                updateUrlBarAndDirectories();
-                            } else {
-                                if (DEBUGGING) {
-                                    System.out.println(String.format("Opening file: %s", entry.getFileName()));
-                                }
-                                try {
-                                    File localSaveLocation = downloadFileLocally(entry.getFileName(), false);
-                                    Desktop.getDesktop().open(localSaveLocation);
-                                } catch (SftpException e) {
-                                    if (DEBUGGING) {
-                                        e.printStackTrace();
-                                    }
-                                    throw new RuntimeException("Failed to copy file locally...");
-                                    //todo: error message when failing to transfer file
-                                } catch (IOException e) {
-                                    if (DEBUGGING) {
-                                        e.printStackTrace();
-                                        System.out.println("Failed to open file");
-                                    }
-                                    throw new RuntimeException("Failed to open file after copying locally...");
-                                    //todo: error message when failing to open file
-                                }
-                            }
-                        }
+                setOnKeyPressed(new EventHandler<KeyEvent>() {
+                    @Override
+                    public void handle(KeyEvent event) {
+                        System.out.println("Key pressed...");
+                        System.out.println(event.getCode());
                     }
                 });
 
+                setOnMouseClicked(mouseClickedEvent -> {
+                    if (!empty){
+                        if (mouseClickedEvent.getButton().equals(MouseButton.PRIMARY) && mouseClickedEvent.getClickCount() == 2) {
+                            onFileInfoOpened(entry);
+                        }
+                    }
+                });
 
                 //////////////////////
                 //DRAG FROM EXTERNAL INTO APPLICATION
@@ -219,7 +237,9 @@ public class App extends Application {
                     public void handle(DragEvent event) {
                         if (!empty){
                             if (event.getGestureSource() != currentListCell && event.getDragboard().hasFiles()){
-                                setBackground(new Background(new BackgroundFill(Color.LIGHTBLUE, CornerRadii.EMPTY, Insets.EMPTY)));
+                                getStylesheets().clear();
+                                String style = getClass().getClassLoader().getResource("ListCellStyling/ListCellStylingDragOver.css").toExternalForm();
+                                getStylesheets().add(style);
                                 setTextFill(Color.BLACK);
                             }
                             event.consume();
@@ -232,7 +252,9 @@ public class App extends Application {
                     public void handle(DragEvent event) {
                         if (!empty){
                             if (event.getGestureSource() != currentListCell){
-                                setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
+                                getStylesheets().clear();
+                                String style = getClass().getClassLoader().getResource("ListCellStyling/ListCellStyling.css").toExternalForm();
+                                getStylesheets().add(style);
                                 setTextFill(Color.BLACK);
                             }
                             event.consume();
@@ -317,9 +339,6 @@ public class App extends Application {
                                 e.printStackTrace();
                             }
 
-                            setBackground(new Background(new BackgroundFill(Color.BLUE, CornerRadii.EMPTY, Insets.EMPTY)));
-                            setTextFill(Color.BLACK);
-
                             event.consume();
                         }
                     }
@@ -331,10 +350,6 @@ public class App extends Application {
                         if (!empty){
                             System.out.println(String.format("Drag Done: %s", event.getTarget()));
                         }
-
-                        setBackground(new Background(new BackgroundFill(Color.TRANSPARENT, CornerRadii.EMPTY, Insets.EMPTY)));
-                        setTextFill(Color.BLACK);
-
                     }
                 });
             }
@@ -367,6 +382,34 @@ public class App extends Application {
         initializeDirAndLinkIcons();
 
         updateUrlBarAndDirectories();
+    }
+
+    private void onFileInfoOpened (FileInfo entry){
+        if (FileInfo.isDirectoryOrLink(entry.getSftpATTRS())) {
+            fileSender.cd(entry.getFileName());
+            updateUrlBarAndDirectories();
+        } else {
+            if (DEBUGGING) {
+                System.out.println(String.format("Opening file: %s", entry.getFileName()));
+            }
+            try {
+                File localSaveLocation = downloadFileLocally(entry.getFileName(), false);
+                Desktop.getDesktop().open(localSaveLocation);
+            } catch (SftpException e) {
+                if (DEBUGGING) {
+                    e.printStackTrace();
+                }
+                throw new RuntimeException("Failed to copy file locally...");
+                //todo: error message when failing to transfer file
+            } catch (IOException e) {
+                if (DEBUGGING) {
+                    e.printStackTrace();
+                    System.out.println("Failed to open file");
+                }
+                throw new RuntimeException("Failed to open file after copying locally...");
+                //todo: error message when failing to open file
+            }
+        }
     }
 
     private void initializeDirAndLinkIcons() throws IOException {
@@ -490,7 +533,7 @@ public class App extends Application {
             if (!entry.getAttrs().isDir()){
                 fileSender.getFile(remoteFileLocation, localFileLocation);
             }
-            else if ( ! (".".equals(entry.getFilename()) || "..".equals(entry.getFilename())) ){
+            else if (!FileSender.isDotOrDotDotDirectory(entry.getFilename())){
                 new File(localFileLocation).mkdir();
                 downloadFileRecursively(localFileLocation, remoteFileLocation);
             }

@@ -21,6 +21,10 @@ public class FileSender {
         return channelSftp.ls(".");
     }
 
+    public static boolean isDotOrDotDotDirectory(String dir){
+        return ".".equals(dir) || "..".equals(dir);
+    }
+
     public List<ChannelSftp.LsEntry> ls (String location) throws SftpException {
         if (!channelSftpConfigured()){
             return null;
@@ -51,6 +55,38 @@ public class FileSender {
             return;
         }
         channelSftp.mkdir(dir);
+    }
+
+    public boolean isDir(String dir) throws SftpException {
+        return channelSftp.stat(dir).isDir();
+    }
+
+    public void removeFile(String fileName) throws SftpException {
+        if (!channelSftpConfigured()){
+            return;
+        }
+        channelSftp.rm(fileName);
+    }
+    public void removeAllFolderContents(String fileName) throws SftpException {
+        if (!channelSftpConfigured()){
+            return;
+        }
+        removeRecursively(getRemotePath() + "/" + fileName);
+    }
+
+    private void removeRecursively(String remoteDir) throws SftpException {
+        for (ChannelSftp.LsEntry entry : (List<ChannelSftp.LsEntry>) channelSftp.ls(remoteDir)){
+            if (! isDotOrDotDotDirectory(entry.getFilename())){
+                String fileName = remoteDir + "/" + entry.getFilename();
+                if (entry.getAttrs().isDir()){
+                    removeRecursively(fileName);
+                }
+                else{
+                    channelSftp.rm(fileName);
+                }
+            }
+        }
+        channelSftp.rmdir(remoteDir);
     }
 
     public void cd(String path){
