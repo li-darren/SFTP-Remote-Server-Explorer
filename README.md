@@ -1,4 +1,4 @@
-# FileTransfer
+# SFTP Remote Server Explorer
 
 A remote server file explorer that supports
 - Navigating, renaming, and deleting files
