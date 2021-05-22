@@ -33,27 +33,9 @@ public class FileMonitor {
         fileAlterationMonitor = new FileAlterationMonitor(pollingInterval);
         FileAlterationListener fileAlterationListener = new FileAlterationListenerAdaptor() {
             @Override
-            public void onDirectoryCreate(File directory) {
-                Path relativePath = rootFileToMonitor.relativize(directory.toPath());
-//                System.out.println(String.format("Created directory: %s", relativePath.toString()));
-            }
-
-            @Override
-            public void onDirectoryChange(File directory) {
-                Path relativePath = rootFileToMonitor.relativize(directory.toPath());
-//                System.out.println(String.format("Changed directory: %s", relativePath.toString()));
-            }
-
-            @Override
-            public void onDirectoryDelete(File directory) {
-                Path relativePath = rootFileToMonitor.relativize(directory.toPath());
-//                System.out.println(String.format("Deleted directory: %s", relativePath.toString()));
-            }
-
-            @Override
             public void onFileCreate(File file) {
                 Path relativePath = rootFileToMonitor.relativize(file.toPath());
-//                System.out.println(String.format("File created: %s", relativePath.toString()));
+                System.out.println(String.format("File created: %s", relativePath.toString()));
             }
 
             @Override
@@ -62,7 +44,9 @@ public class FileMonitor {
                 String relativePathString = relativePath.toString();
                 relativePathString = relativePathString.replace("\\", "/");
                 relativePathString = "/".concat(relativePathString);
-                System.out.println(String.format("File Changed: %s", relativePathString));
+                if (App.DEBUGGING){
+                    System.out.println(String.format("File Changed: %s", file.toString()));
+                }
 
                 String localFileDestination = file.toString().replace("\\", "/");
                 fileSender.sendFile(localFileDestination, relativePathString);
@@ -70,8 +54,7 @@ public class FileMonitor {
 
             @Override
             public void onFileDelete(File file) {
-                Path relativePath = rootFileToMonitor.relativize(file.toPath());
-//                System.out.println(String.format("File Deleted: %s", relativePath.toString()));
+                System.out.println(String.format("Deleting file: %s", file.toString()));
             }
         };
 

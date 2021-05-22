@@ -3,11 +3,13 @@ package FileTransfer;
 import com.jcraft.jsch.*;
 
 import java.io.File;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FileSender {
 
     private ChannelSftp channelSftp = null;
+    private Set<String> currentlyDownloadingFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     FileSender(Session jschSession) throws JSchException {
         this.channelSftp = (ChannelSftp) jschSession.openChannel("sftp");;
@@ -126,8 +128,13 @@ public class FileSender {
 
     }
 
-    public File getFile(String remoteFilePath, String localFilePath) throws SftpException {
+    synchronized public File getFile(String remoteFilePath, String localFilePath) throws SftpException {
+
+
+        currentlyDownloadingFiles.add(localFilePath);
         channelSftp.get(remoteFilePath, localFilePath);
+        currentlyDownloadingFiles.remove(localFilePath);
+
         if (App.DEBUGGING){
             System.out.println(String.format("Downloaded file locally... %s", localFilePath));
         }
@@ -144,22 +151,36 @@ public class FileSender {
 
         File fileToSend = new File(localFilePath);
 
-        if (fileToSend.exists()){
+        if (fileToSend.exists() && !isDownloading(localFilePath)){
             try{
                 channelSftp.put(localFilePath, remoteFilePath);
             }
             catch (Exception e){
                 if (App.DEBUGGING){
-                    System.out.println("Failed to transfer files...");;
+                    System.out.println(String.format("Failed to transfer file %s", localFilePath));;
                     e.printStackTrace();
                 }
                 //todo: failed to transfer files....
             }
         }
         else{
-            throw new RuntimeException(String.format("Failed to transfer file, file doesn't exist: %s", localFilePath));
+            if (App.DEBUGGING){
+                System.out.println("Not transferring file... doesn't exist or is downloading...");
+            }
+//            throw new RuntimeException(String.format("Failed to transfer file, file doesn't exist: %s", localFilePath));
         }
 
+    }
+
+    private boolean isDownloading(String file){
+
+        File f = new File(file);
+
+        if (file == null || !f.exists()){
+            return false;
+        }
+
+        return currentlyDownloadingFiles.contains(file);
     }
 
 }

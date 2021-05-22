@@ -41,7 +41,7 @@ import java.util.List;
 
 public class App extends Application {
 
-    public final static boolean DEBUGGING = true;
+    public final static boolean DEBUGGING = false;
     private FileSender fileSender = null;
     private RemoteTerminal remoteTerminal = null;
     private TextField currentUrl = null;
@@ -174,9 +174,9 @@ public class App extends Application {
                 }
                 else if (event.getCode() == KeyCode.F2){
                     TextInputDialog dialog = new TextInputDialog(selectedFileInfo.getFileName());
-                    dialog.setTitle("Rename Folder");
+                    dialog.setTitle("Rename File");
                     dialog.setHeaderText(null);
-                    dialog.setContentText(String.format("Rename folder \"%s\" to:", selectedFileInfo.getFileName()));
+                    dialog.setContentText(String.format("Rename File \"%s\" to:", selectedFileInfo.getFileName()));
 
                     Optional<String> result = dialog.showAndWait();
                     if (result.isPresent()){
@@ -329,7 +329,10 @@ public class App extends Application {
 
                                     File localFileLocation = downloadFileLocally(entry.getFileName(), entry.getSftpATTRS().isDir());
 
-                                    System.out.println(String.format("Downloaded File Location: %s", localFileLocation.getPath()));
+                                    if (App.DEBUGGING){
+                                        System.out.println(String.format("Downloaded File Location: %s", localFileLocation.getPath()));
+                                    }
+
                                     content.putFiles(new ArrayList<>(Arrays.asList(localFileLocation)));
                                     content.putString(getText());
                                     db.setContent(content);
@@ -364,23 +367,26 @@ public class App extends Application {
         primaryStage.setWidth(1000);
         primaryStage.setScene(new Scene(root));
         primaryStage.setTitle("File Transfer");
+        BufferedImage stageBufferedImage = ImageIO.read(getClass().getClassLoader().getResource("App Icon.png"));
+        Image stageImage = SwingFXUtils.toFXImage(stageBufferedImage, null);
+        primaryStage.getIcons().add(stageImage);
         primaryStage.show();
 
-//        SSHSessionCredentials credentials = null;
-//
-//        while (credentials == null || isInvalidCredentials(credentials)){
-//            credentials = promptUserForConnection();
-//        }
-//
-//        if (DEBUGGING){
-//            System.out.println(credentials.getHostName());
-//            System.out.println(credentials.getUsername());
-//            System.out.println(credentials.getPassword());
-//        }
-//
-//        configureEnvironment(credentials);
+        SSHSessionCredentials credentials = null;
 
-        configureTestEnvironment();
+        while (credentials == null || isInvalidCredentials(credentials)){
+            credentials = promptUserForConnection();
+        }
+
+        if (DEBUGGING){
+            System.out.println(credentials.getHostName());
+            System.out.println(credentials.getUsername());
+            System.out.println(credentials.getPassword());
+        }
+
+        configureEnvironment(credentials);
+
+//        configureTestEnvironment();
 
         initializeDirAndLinkIcons();
 
@@ -419,7 +425,7 @@ public class App extends Application {
         //initialize the folder icon
 //        IconFetcher.addFileIcon(".", ".");
         IconFetcher.addFileIcon("testShortcut", "lnk");
-
+        
         BufferedImage shortcutBufferedImage = ImageIO.read(getClass().getClassLoader().getResource("shortcuticon.png"));
         BufferedImage scaledShortcutBufferedImage = Scalr.resize(shortcutBufferedImage, iconSize);
         Image shortcutIcon = SwingFXUtils.toFXImage(scaledShortcutBufferedImage, null);
@@ -481,6 +487,7 @@ public class App extends Application {
     }
 
     private File downloadFileLocally(String relativeFileName, boolean downloadFolder) throws SftpException {
+
         String localSaveFolder = saveLoc + fileSender.getRemotePath();
         File localSaveFolderFile = new File(localSaveFolder);
         if (!localSaveFolderFile.exists()){
