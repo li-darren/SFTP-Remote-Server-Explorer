@@ -1,9 +1,9 @@
 # FileTransfer
 
 A remote server file explorer that supports
-- Navigation of files
-- Drag and Drop To Local Explorer
+- Navigating, renaming, and deleting files
 - Opening and editing files (auto update to server)
+- Drag and Drop To and From Local Explorer
 
 Login Screen:
 
@@ -17,11 +17,11 @@ Open files locally and automatically update to Server:
 
 ![Image](ReadMe_Images/Editing_Files.gif)
 
-Drag and Drop from Local to Server:
+Drag and Drop from Local Explorer to Server:
 
 ![image](ReadMe_Images/Drag_and_Drop.gif)
 
-Drag and Drop from Server to Local:
+Drag and Drop from Server to Local Explorer:
 
 ![image](ReadMe_Images/Drag_And_Drop2.gif)
 
