@@ -9,6 +9,10 @@ Login Screen:
 
 ![image](https://user-images.githubusercontent.com/43430567/119242854-73777e00-bb2f-11eb-8afb-031ad8af67f9.png)
 
+Folder Navigation:
+
+![Image](ReadMe_Images/Folder_Navigation.gif)
+
 Open files locally and automatically update to Server: 
 
 ![Image](ReadMe_Images/Editing_Files.gif)
