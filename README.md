@@ -2,7 +2,7 @@
 
 A remote server file explorer that supports
 - Navigating, renaming, and deleting files
-- Opening and editing files (auto update to server)
+- Opening and editing files (auto upload changes)
 - Drag and Drop To and From Local Explorer
 
 Login Screen:
